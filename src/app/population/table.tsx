@@ -2,7 +2,7 @@
 
 import type { PopulationRow } from "@/db/schema";
 import { AlertTriangle, Check, Pencil, Trash2, X } from "lucide-react";
-import { useMemo, useOptimistic, useState, useTransition } from "react";
+import { useOptimistic, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
 import { deletePopulation, upsertPopulation } from "./actions";
@@ -68,7 +68,7 @@ export function PopulationTable({
 }) {
   const router = useRouter();
 
-  const initial = useMemo(() => initialRows.map(toEditable), [initialRows]);
+  const initial = initialRows.map(toEditable);
   const [isPending, startTransition] = useTransition();
 
   const [page, setPage] = useState<number>(initialPage);
