@@ -2,25 +2,28 @@ import { Suspense } from "react";
 import { PopulationTable } from "./table";
 import { getPopulationPage } from "./actions";
 
-async function PopulationTableLoader({ page }: { page: number }) {
-  const data = await getPopulationPage({ page });
+async function PopulationTableLoader({ page, pageSize }: { page: number; pageSize: number }) {
+  const data = await getPopulationPage({ page, pageSize });
 
   return (
     <PopulationTable
+      key={`${data.page}-${data.pageSize}`}
       initialRows={data.rows}
       initialPage={data.page}
       initialTotalPages={data.totalPages}
       initialTotal={data.total}
       pageSize={data.pageSize}
+      pageSizeOptions={data.pageSizeOptions}
     />
   );
 }
 
 export default async function PopulationPage(props: {
-  searchParams: Promise<{ page?: string }>;
+  searchParams: Promise<{ page?: string; pageSize?: string }>;
 }) {
   const searchParams = await props.searchParams;
   const page = Math.max(1, Number(searchParams?.page ?? "1") || 1);
+  const pageSize = Math.max(5, Math.min(100, Number(searchParams?.pageSize ?? "0") || 15));
   return (
     <div className="min-h-screen bg-zinc-50 px-6 py-10 text-zinc-950 dark:bg-black dark:text-zinc-50">
       <div className="mx-auto w-full max-w-5xl">
@@ -38,7 +41,7 @@ export default async function PopulationPage(props: {
             </div>
           }
         >
-          <PopulationTableLoader page={page} />
+          <PopulationTableLoader page={page} pageSize={pageSize} />
         </Suspense>
       </div>
     </div>

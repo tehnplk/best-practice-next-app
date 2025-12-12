@@ -5,7 +5,7 @@ import { AlertTriangle, Check, Pencil, Trash2, X } from "lucide-react";
 import { useMemo, useOptimistic, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
-import { deletePopulation, getPopulationPage, upsertPopulation } from "./actions";
+import { deletePopulation, upsertPopulation } from "./actions";
 
 type EditableRow = {
   citizenId: string;
@@ -36,6 +36,14 @@ function emptyRow(): EditableRow {
   };
 }
 
+function isValidCitizenId(value: string) {
+  return /^\d{13}$/.test(value);
+}
+
+function isNonEmpty(value: string) {
+  return value.trim().length > 0;
+}
+
 function mergeRowsByCitizenId(existing: EditableRow[], incoming: EditableRow[]) {
   const map = new Map<string, EditableRow>();
   for (const r of existing) map.set(r.citizenId, r);
@@ -49,12 +57,14 @@ export function PopulationTable({
   initialTotalPages,
   initialTotal,
   pageSize,
+  pageSizeOptions,
 }: {
   initialRows: PopulationRow[];
   initialPage: number;
   initialTotalPages: number;
   initialTotal: number;
   pageSize: number;
+  pageSizeOptions: readonly number[];
 }) {
   const router = useRouter();
 
@@ -64,6 +74,7 @@ export function PopulationTable({
   const [page, setPage] = useState<number>(initialPage);
   const [totalPages, setTotalPages] = useState<number>(initialTotalPages);
   const [total, setTotal] = useState<number>(initialTotal);
+  const [size, setSize] = useState<number>(pageSize);
   const [loadedRows, setLoadedRows] = useState<EditableRow[]>(initial);
 
   const [confirmDelete, setConfirmDelete] = useState<{
@@ -95,12 +106,57 @@ export function PopulationTable({
 
   const [draft, setDraft] = useState<EditableRow>(() => emptyRow());
 
-  function onSave(row: EditableRow) {
+  function saveRow(row: EditableRow) {
     startTransition(async () => {
       setOptimisticRows({ type: "upsert", row });
       try {
         await upsertPopulation(row);
         setLoadedRows((prev) => mergeRowsByCitizenId(prev, [row]));
+        toast.success("Saved");
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : "Save failed");
+      }
+    });
+  }
+
+  function addDraft() {
+    const errors: string[] = [];
+
+    if (!isNonEmpty(draft.citizenId)) {
+      errors.push("Citizen ID is required");
+    } else if (!isValidCitizenId(draft.citizenId)) {
+      errors.push("Citizen ID ต้องมี 13 หลัก");
+    }
+
+    if (!isNonEmpty(draft.fullName)) {
+      errors.push("Full name is required");
+    }
+
+    if (!isNonEmpty(draft.birthDate)) {
+      errors.push("Birth date is required");
+    }
+
+    if (errors.length > 0) {
+      toast.error(
+        <div className="space-y-1">
+          <div className="font-medium">Please fix the following:</div>
+          <ul className="list-inside list-disc">
+            {errors.map((m) => (
+              <li key={m}>{m}</li>
+            ))}
+          </ul>
+        </div>
+      );
+      return;
+    }
+
+    const row = { ...draft };
+    startTransition(async () => {
+      setOptimisticRows({ type: "upsert", row });
+      try {
+        await upsertPopulation(row);
+        setLoadedRows((prev) => mergeRowsByCitizenId(prev, [row]));
+        setDraft(emptyRow());
         toast.success("Saved");
       } catch (e) {
         toast.error(e instanceof Error ? e.message : "Save failed");
@@ -135,23 +191,20 @@ export function PopulationTable({
     });
   }
 
-  function loadPage(targetPage: number) {
-    if (targetPage < 1 || targetPage > totalPages || targetPage === page) return;
-    startTransition(async () => {
-      try {
-        const res = await getPopulationPage({ page: targetPage });
-        const nextRows = res.rows.map(toEditable);
-        setLoadedRows(nextRows);
-        setOptimisticRows({ type: "reset", rows: nextRows });
-        setPage(res.page);
-        setTotalPages(res.totalPages);
-        setTotal(res.total);
-        router.replace(`/population?page=${res.page}`);
-        if (typeof window !== "undefined") window.scrollTo({ top: 0, behavior: "smooth" });
-      } catch (e) {
-        toast.error(e instanceof Error ? e.message : "Load page failed");
-      }
+  function loadPage(targetPage: number, targetSize?: number) {
+    const nextSize = targetSize ?? size;
+    const target = Math.max(1, targetPage);
+    startTransition(() => {
+      const search = new URLSearchParams();
+      search.set("page", String(target));
+      search.set("pageSize", String(nextSize));
+      router.replace(`/population?${search.toString()}`);
     });
+  }
+
+  function onChangePageSize(event: React.ChangeEvent<HTMLSelectElement>) {
+    const nextSize = Number(event.target.value) || pageSize;
+    loadPage(1, nextSize);
   }
 
   function renderPagination() {
@@ -172,9 +225,9 @@ export function PopulationTable({
     }
 
     return (
-      <div className="flex items-center justify-between gap-3 border-t border-zinc-200 px-4 py-3 text-sm dark:border-zinc-800">
+      <div className="flex flex-wrap items-center gap-3 text-sm">
         <div className="text-xs text-zinc-600 dark:text-zinc-400">
-          Page {page} of {totalPages} · {total} rows
+          Page {page} of {totalPages} · {total} rows · {size} per page
         </div>
         <div className="flex items-center gap-2">
           <button
@@ -221,7 +274,31 @@ export function PopulationTable({
 
   return (
     <div className="rounded-xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950">
-      <div className="border-b border-zinc-200 p-4 dark:border-zinc-800">
+      <div className="flex flex-col gap-3 border-b border-zinc-200 p-4 dark:border-zinc-800">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="text-sm font-medium text-zinc-900 dark:text-zinc-100">Population</div>
+          <div className="ml-auto flex items-center justify-end gap-4 text-sm">
+            {renderPagination()}
+            <div className="flex items-center gap-2">
+              <label htmlFor="page-size" className="whitespace-nowrap text-zinc-600 dark:text-zinc-400">
+                Rows per page
+              </label>
+              <select
+                id="page-size"
+                className="h-9 rounded-md border border-zinc-200 bg-white px-2 text-sm outline-none focus:border-zinc-400 dark:border-zinc-800 dark:bg-zinc-950"
+                value={size}
+                disabled={isPending}
+                onChange={onChangePageSize}
+              >
+                {pageSizeOptions.map((opt) => (
+                  <option key={opt} value={opt}>
+                    {opt}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+        </div>
         <div className="grid grid-cols-1 gap-3 md:grid-cols-5">
           <input
             className="h-10 rounded-md border border-zinc-200 bg-white px-3 text-sm outline-none focus:border-zinc-400 dark:border-zinc-800 dark:bg-zinc-950"
@@ -259,10 +336,7 @@ export function PopulationTable({
           <button
             className="h-10 rounded-md bg-zinc-950 px-4 text-sm font-medium text-white disabled:opacity-50 dark:bg-zinc-50 dark:text-zinc-950"
             disabled={isPending}
-            onClick={() => {
-              onSave(draft);
-              setDraft(emptyRow());
-            }}
+            onClick={addDraft}
           >
             Add / Save
           </button>
@@ -289,7 +363,7 @@ export function PopulationTable({
                 key={row.citizenId}
                 row={row}
                 disabled={isPending}
-                onSave={onSave}
+                onSave={saveRow}
                 onRequestDelete={requestDelete}
               />
             ))}
@@ -303,8 +377,6 @@ export function PopulationTable({
           </tbody>
         </table>
       </div>
-
-      {renderPagination()}
 
       <ConfirmDeleteDialog
         open={confirmDelete.open}

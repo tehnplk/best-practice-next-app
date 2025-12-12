@@ -6,7 +6,8 @@ import { count, desc, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
-const PAGE_SIZE = 15;
+const DEFAULT_PAGE_SIZE = 15;
+const PAGE_SIZE_OPTIONS = [10, 15, 20, 50] as const;
 
 const GenderSchema = z.enum(["M", "F", "O"]);
 
@@ -64,29 +65,34 @@ export async function deletePopulation(input: unknown) {
 
 const GetPopulationPageSchema = z.object({
   page: z.number().int().min(1),
+  pageSize: z.number().int().min(5).max(100).optional(),
 });
 
 export async function getPopulationPage(input: unknown) {
-  const { page } = GetPopulationPageSchema.parse(input);
-  const offset = (page - 1) * PAGE_SIZE;
+  const { page, pageSize } = GetPopulationPageSchema.parse(input);
+  const size = pageSize ?? DEFAULT_PAGE_SIZE;
 
   const [{ value: totalCount }] = await db.select({ value: count() }).from(populationTable);
   const total = Number(totalCount || 0);
-  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const totalPages = Math.max(1, Math.ceil(total / size));
+
+  const safePage = Math.min(page, totalPages);
+  const offset = (safePage - 1) * size;
 
   const rows = await db
     .select()
     .from(populationTable)
     .orderBy(desc(populationTable.birthDate))
-    .limit(PAGE_SIZE + 1)
+    .limit(size + 1)
     .offset(offset);
 
   return {
-    rows: rows.slice(0, PAGE_SIZE),
-    hasMore: rows.length > PAGE_SIZE,
-    page,
-    pageSize: PAGE_SIZE,
+    rows: rows.slice(0, size),
+    hasMore: rows.length > size,
+    page: safePage,
+    pageSize: size,
     total,
     totalPages,
+    pageSizeOptions: PAGE_SIZE_OPTIONS,
   };
 }
