@@ -2,7 +2,7 @@
 
 import { db } from "@/db";
 import { hospitalAdmissionHistoryTable, populationTable } from "@/db/schema";
-import { count, desc, eq } from "drizzle-orm";
+import { asc, count, desc, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
@@ -84,17 +84,18 @@ export async function getPopulationPage(input: unknown) {
   const safePage = Math.min(page, totalPages);
   const offset = (safePage - 1) * size;
 
-  const direction = sortDir ?? "desc";
-  const order = (col: any) => (direction === "asc" ? col : desc(col));
+  const effectiveSortBy = sortBy ?? "createdAt";
+  const effectiveSortDir = sortDir ?? "desc";
+  const order = (col: any) => (effectiveSortDir === "asc" ? asc(col) : desc(col));
 
   const sortColumn =
-    sortBy === "cid"
+    effectiveSortBy === "cid"
       ? populationTable.cid
-      : sortBy === "fullName"
+      : effectiveSortBy === "fullName"
         ? populationTable.fullName
-        : sortBy === "gender"
+        : effectiveSortBy === "gender"
           ? populationTable.gender
-          : sortBy === "birthDate"
+          : effectiveSortBy === "birthDate"
             ? populationTable.birthDate
             : populationTable.createdAt;
 
@@ -113,8 +114,8 @@ export async function getPopulationPage(input: unknown) {
     total,
     totalPages,
     pageSizeOptions: PAGE_SIZE_OPTIONS,
-    sortBy: sortBy ?? "createdAt",
-    sortDir: direction,
+    sortBy: effectiveSortBy,
+    sortDir: effectiveSortDir,
   };
 }
 
@@ -135,5 +136,46 @@ export async function getHospitalAdmissionsByCid(input: unknown) {
       ...r,
       admissionDate: r.admissionDate.getTime(),
     })),
+  };
+}
+
+const CreateHospitalAdmissionSchema = z.object({
+  cid: z.string().regex(/^\d{13}$/),
+  admissionDate: z.string().min(1),
+  hospitalName: z.string().min(1),
+});
+
+function parseAdmissionDate(input: string): Date {
+  // Expecting yyyy-mm-dd
+  const d = new Date(`${input}T00:00:00`);
+  if (Number.isNaN(d.getTime())) {
+    throw new Error("Invalid admissionDate");
+  }
+  return d;
+}
+
+export async function createHospitalAdmission(input: unknown) {
+  const data = CreateHospitalAdmissionSchema.parse(input);
+  const admissionDate = parseAdmissionDate(data.admissionDate);
+
+  const inserted = await db
+    .insert(hospitalAdmissionHistoryTable)
+    .values({
+      cid: data.cid,
+      admissionDate,
+      hospitalName: data.hospitalName,
+    })
+    .returning();
+
+  const row = inserted[0];
+  if (!row) {
+    throw new Error("Insert failed");
+  }
+
+  return {
+    row: {
+      ...row,
+      admissionDate: row.admissionDate.getTime(),
+    },
   };
 }

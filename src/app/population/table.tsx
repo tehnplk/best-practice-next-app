@@ -9,6 +9,7 @@ import {
   Check,
   ChevronDown,
   ChevronRight,
+  Plus,
   Pencil,
   Trash2,
   X,
@@ -16,7 +17,12 @@ import {
 import { Fragment, useOptimistic, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
-import { deletePopulation, getHospitalAdmissionsByCid, upsertPopulation } from "./actions";
+import {
+  createHospitalAdmission,
+  deletePopulation,
+  getHospitalAdmissionsByCid,
+  upsertPopulation,
+} from "./actions";
 
 type AdmissionRow = {
   id: number;
@@ -233,6 +239,11 @@ export function PopulationTable({
   const [expandedCid, setExpandedCid] = useState<string | null>(null);
   const [loadingCid, setLoadingCid] = useState<string | null>(null);
   const [admissionsByCid, setAdmissionsByCid] = useState<Record<string, AdmissionRow[]>>({});
+  const [addAdmissionOpenByCid, setAddAdmissionOpenByCid] = useState<Record<string, boolean>>({});
+  const [admissionDraftByCid, setAdmissionDraftByCid] = useState<
+    Record<string, { admissionDate: string; hospitalName: string }>
+  >({});
+  const [savingAdmissionCid, setSavingAdmissionCid] = useState<string | null>(null);
 
   const [confirmDelete, setConfirmDelete] = useState<{
     open: boolean;
@@ -268,6 +279,74 @@ export function PopulationTable({
     const d = new Date(value);
     if (Number.isNaN(d.getTime())) return "-";
     return d.toLocaleDateString();
+  }
+
+  function todayIsoDate() {
+    const d = new Date();
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, "0");
+    const dd = String(d.getDate()).padStart(2, "0");
+    return `${yyyy}-${mm}-${dd}`;
+  }
+
+  function toggleAddAdmission(cid: string) {
+    setAddAdmissionOpenByCid((prev) => {
+      const next = !prev[cid];
+      return { ...prev, [cid]: next };
+    });
+    setAdmissionDraftByCid((prev) =>
+      prev[cid]
+        ? prev
+        : {
+            ...prev,
+            [cid]: {
+              admissionDate: todayIsoDate(),
+              hospitalName: "",
+            },
+          },
+    );
+  }
+
+  function closeAddAdmission(cid: string) {
+    setAddAdmissionOpenByCid((prev) => ({ ...prev, [cid]: false }));
+  }
+
+  async function saveAdmission(cid: string) {
+    const draft = admissionDraftByCid[cid];
+    if (!draft?.admissionDate) {
+      toast.error("Admission date is required");
+      return;
+    }
+    if (!draft?.hospitalName?.trim()) {
+      toast.error("Hospital name is required");
+      return;
+    }
+
+    setSavingAdmissionCid(cid);
+    try {
+      const res = await createHospitalAdmission({
+        cid,
+        admissionDate: draft.admissionDate,
+        hospitalName: draft.hospitalName,
+      });
+
+      setAdmissionsByCid((prev) => {
+        const existing = prev[cid] ?? [];
+        return { ...prev, [cid]: [res.row, ...existing] };
+      });
+
+      setAdmissionDraftByCid((prev) => ({
+        ...prev,
+        [cid]: {
+          admissionDate: todayIsoDate(),
+          hospitalName: "",
+        },
+      }));
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Save failed");
+    } finally {
+      setSavingAdmissionCid((cur) => (cur === cid ? null : cur));
+    }
   }
 
   function toggleExpand(cid: string) {
@@ -595,10 +674,27 @@ export function PopulationTable({
                   <tr className="border-b border-zinc-100 last:border-b-0 dark:border-zinc-900">
                     <td className="px-4 py-3" colSpan={5}>
                       <div className="rounded-lg border border-zinc-200 bg-zinc-50 p-3 text-sm dark:border-zinc-800 dark:bg-zinc-900/20">
+                        <div className="mb-3 flex items-center justify-between">
+                          <div className="text-sm font-medium text-zinc-900 dark:text-zinc-100">
+                            Admission history
+                          </div>
+                          {!addAdmissionOpenByCid[row.cid] ? (
+                            <button
+                              type="button"
+                              className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-zinc-200 bg-white text-zinc-900 disabled:opacity-50 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-50"
+                              disabled={isPending || loadingCid === row.cid || savingAdmissionCid === row.cid}
+                              aria-label="Add admission"
+                              onClick={() => toggleAddAdmission(row.cid)}
+                            >
+                              <Plus className="h-4 w-4" />
+                            </button>
+                          ) : (
+                            <div />
+                          )}
+                        </div>
+
                         {loadingCid === row.cid ? (
                           <div className="text-zinc-600 dark:text-zinc-400">Loading admission history...</div>
-                        ) : (admissionsByCid[row.cid] ?? []).length === 0 ? (
-                          <div className="text-zinc-600 dark:text-zinc-400">No admission history.</div>
                         ) : (
                           <div className="overflow-x-auto">
                             <table className="w-full text-left text-sm">
@@ -609,6 +705,14 @@ export function PopulationTable({
                                 </tr>
                               </thead>
                               <tbody>
+                                {(admissionsByCid[row.cid] ?? []).length === 0 && !addAdmissionOpenByCid[row.cid] ? (
+                                  <tr>
+                                    <td className="px-3 py-3 text-zinc-600 dark:text-zinc-400" colSpan={2}>
+                                      No admission history.
+                                    </td>
+                                  </tr>
+                                ) : null}
+
                                 {(admissionsByCid[row.cid] ?? []).map((a) => (
                                   <tr key={a.id} className="border-b border-zinc-100 last:border-b-0 dark:border-zinc-900">
                                     <td className="px-3 py-2 font-mono text-xs text-zinc-700 dark:text-zinc-300">
@@ -617,6 +721,67 @@ export function PopulationTable({
                                     <td className="px-3 py-2 text-zinc-900 dark:text-zinc-50">{a.hospitalName}</td>
                                   </tr>
                                 ))}
+
+                                {addAdmissionOpenByCid[row.cid] ? (
+                                  <tr className="border-t border-zinc-200 dark:border-zinc-800">
+                                    <td className="px-3 py-2">
+                                      <input
+                                        className="h-9 w-full rounded-md border border-zinc-200 bg-white px-2 text-sm outline-none focus:border-zinc-400 dark:border-zinc-800 dark:bg-zinc-950"
+                                        type="date"
+                                        value={admissionDraftByCid[row.cid]?.admissionDate ?? ""}
+                                        onChange={(e) =>
+                                          setAdmissionDraftByCid((prev) => ({
+                                            ...prev,
+                                            [row.cid]: {
+                                              admissionDate: e.target.value,
+                                              hospitalName: prev[row.cid]?.hospitalName ?? "",
+                                            },
+                                          }))
+                                        }
+                                      />
+                                    </td>
+                                    <td className="px-3 py-2">
+                                      <div className="flex items-center gap-2">
+                                        <input
+                                          className="h-9 w-full rounded-md border border-zinc-200 bg-white px-2 text-sm outline-none focus:border-zinc-400 dark:border-zinc-800 dark:bg-zinc-950"
+                                          placeholder="Hospital name"
+                                          value={admissionDraftByCid[row.cid]?.hospitalName ?? ""}
+                                          onChange={(e) =>
+                                            setAdmissionDraftByCid((prev) => ({
+                                              ...prev,
+                                              [row.cid]: {
+                                                admissionDate: prev[row.cid]?.admissionDate ?? todayIsoDate(),
+                                                hospitalName: e.target.value,
+                                              },
+                                            }))
+                                          }
+                                        />
+                                        <button
+                                          type="button"
+                                          className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-zinc-200 bg-white text-zinc-900 disabled:opacity-50 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-50"
+                                          disabled={isPending || loadingCid === row.cid || savingAdmissionCid === row.cid}
+                                          aria-label="Save admission"
+                                          onClick={() => {
+                                            startTransition(async () => {
+                                              await saveAdmission(row.cid);
+                                            });
+                                          }}
+                                        >
+                                          <Check className="h-4 w-4" />
+                                        </button>
+                                        <button
+                                          type="button"
+                                          className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-zinc-200 bg-white text-zinc-900 disabled:opacity-50 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-50"
+                                          disabled={isPending || loadingCid === row.cid || savingAdmissionCid === row.cid}
+                                          aria-label="Cancel add admission"
+                                          onClick={() => closeAddAdmission(row.cid)}
+                                        >
+                                          <X className="h-4 w-4" />
+                                        </button>
+                                      </div>
+                                    </td>
+                                  </tr>
+                                ) : null}
                               </tbody>
                             </table>
                           </div>
