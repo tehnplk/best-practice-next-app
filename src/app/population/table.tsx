@@ -8,7 +8,7 @@ import toast from "react-hot-toast";
 import { deletePopulation, upsertPopulation } from "./actions";
 
 type EditableRow = {
-  citizenId: string;
+  cid: string;
   fullName: string;
   gender: "M" | "F" | "O";
   birthDate: string; // yyyy-mm-dd
@@ -20,7 +20,7 @@ function toEditable(row: PopulationRow): EditableRow {
   const mm = String(d.getMonth() + 1).padStart(2, "0");
   const dd = String(d.getDate()).padStart(2, "0");
   return {
-    citizenId: row.citizenId,
+    cid: row.cid,
     fullName: row.fullName,
     gender: row.gender as EditableRow["gender"],
     birthDate: `${yyyy}-${mm}-${dd}`,
@@ -29,7 +29,7 @@ function toEditable(row: PopulationRow): EditableRow {
 
 function emptyRow(): EditableRow {
   return {
-    citizenId: "",
+    cid: "",
     fullName: "",
     gender: "M",
     birthDate: "",
@@ -46,8 +46,8 @@ function isNonEmpty(value: string) {
 
 function mergeRowsByCitizenId(existing: EditableRow[], incoming: EditableRow[]) {
   const map = new Map<string, EditableRow>();
-  for (const r of existing) map.set(r.citizenId, r);
-  for (const r of incoming) map.set(r.citizenId, r);
+  for (const r of existing) map.set(r.cid, r);
+  for (const r of incoming) map.set(r.cid, r);
   return Array.from(map.values());
 }
 
@@ -79,8 +79,8 @@ export function PopulationTable({
 
   const [confirmDelete, setConfirmDelete] = useState<{
     open: boolean;
-    citizenId: string;
-  }>({ open: false, citizenId: "" });
+    cid: string;
+  }>({ open: false, cid: "" });
 
   const [optimisticRows, setOptimisticRows] = useOptimistic(
     loadedRows,
@@ -88,17 +88,17 @@ export function PopulationTable({
       state: EditableRow[],
       next:
         | { type: "upsert"; row: EditableRow }
-        | { type: "delete"; citizenId: string }
+        | { type: "delete"; cid: string }
         | { type: "reset"; rows: EditableRow[] }
     ) => {
       if (next.type === "reset") return next.rows;
-      if (next.type === "delete" && next.citizenId) {
-        return state.filter((r) => r.citizenId !== next.citizenId);
+      if (next.type === "delete" && next.cid) {
+        return state.filter((r) => r.cid !== next.cid);
       }
       if (next.type === "upsert") {
-        const idx = state.findIndex((r) => r.citizenId === next.row.citizenId);
+        const idx = state.findIndex((r) => r.cid === next.row.cid);
         if (idx === -1) return [next.row, ...state];
-        return state.map((r) => (r.citizenId === next.row.citizenId ? next.row : r));
+        return state.map((r) => (r.cid === next.row.cid ? next.row : r));
       }
       return state;
     }
@@ -122,9 +122,9 @@ export function PopulationTable({
   function addDraft() {
     const errors: string[] = [];
 
-    if (!isNonEmpty(draft.citizenId)) {
+    if (!isNonEmpty(draft.cid)) {
       errors.push("Citizen ID is required");
-    } else if (!isValidCitizenId(draft.citizenId)) {
+    } else if (!isValidCitizenId(draft.cid)) {
       errors.push("Citizen ID ต้องมี 13 หลัก");
     }
 
@@ -165,25 +165,25 @@ export function PopulationTable({
   }
 
   function requestDelete(citizenId: string) {
-    setConfirmDelete({ open: true, citizenId });
+    setConfirmDelete({ open: true, cid: citizenId });
   }
 
   function closeDeleteDialog() {
-    setConfirmDelete({ open: false, citizenId: "" });
+    setConfirmDelete({ open: false, cid: "" });
   }
 
   function confirmDeleteNow() {
-    const citizenId = confirmDelete.citizenId;
+    const citizenId = confirmDelete.cid;
     closeDeleteDialog();
     if (citizenId) requestAnimationFrame(() => onDelete(citizenId));
   }
 
   function onDelete(citizenId: string) {
     startTransition(async () => {
-      setOptimisticRows({ type: "delete", citizenId });
+      setOptimisticRows({ type: "delete", cid: citizenId });
       try {
-        await deletePopulation({ citizenId });
-        setLoadedRows((prev) => prev.filter((r) => r.citizenId !== citizenId));
+        await deletePopulation({ cid: citizenId });
+        setLoadedRows((prev) => prev.filter((r) => r.cid !== citizenId));
         toast.success("Deleted");
       } catch (e) {
         toast.error(e instanceof Error ? e.message : "Delete failed");
@@ -303,9 +303,9 @@ export function PopulationTable({
           <input
             className="h-10 rounded-md border border-zinc-200 bg-white px-3 text-sm outline-none focus:border-zinc-400 dark:border-zinc-800 dark:bg-zinc-950"
             placeholder="Citizen ID (13 digits)"
-            name="citizenId"
-            value={draft.citizenId}
-            onChange={(e) => setDraft((s) => ({ ...s, citizenId: e.target.value }))}
+            name="cid"
+            value={draft.cid}
+            onChange={(e) => setDraft((s) => ({ ...s, cid: e.target.value }))}
           />
           <input
             className="h-10 rounded-md border border-zinc-200 bg-white px-3 text-sm outline-none focus:border-zinc-400 dark:border-zinc-800 dark:bg-zinc-950 md:col-span-2"
@@ -360,7 +360,7 @@ export function PopulationTable({
           <tbody>
             {optimisticRows.map((row) => (
               <Row
-                key={row.citizenId}
+                key={row.cid}
                 row={row}
                 disabled={isPending}
                 onSave={saveRow}
@@ -380,7 +380,7 @@ export function PopulationTable({
 
       <ConfirmDeleteDialog
         open={confirmDelete.open}
-        citizenId={confirmDelete.citizenId}
+        cid={confirmDelete.cid}
         disabled={isPending}
         onCancel={closeDeleteDialog}
         onConfirm={confirmDeleteNow}
@@ -398,7 +398,7 @@ function Row({
   row: EditableRow;
   disabled: boolean;
   onSave: (row: EditableRow) => void;
-  onRequestDelete: (citizenId: string) => void;
+  onRequestDelete: (cid: string) => void;
 }) {
   const [isEditing, setIsEditing] = useState(false);
   const [local, setLocal] = useState<EditableRow>(row);
@@ -421,13 +421,13 @@ function Row({
   return (
     <tr className="border-b border-zinc-100 last:border-b-0 dark:border-zinc-900">
       <td className="px-4 py-3 font-mono text-xs text-zinc-700 dark:text-zinc-300">
-        {row.citizenId}
+        {row.cid}
       </td>
       <td className="px-4 py-3">
         {isEditing ? (
           <input
             className="h-9 w-full rounded-md border border-zinc-200 bg-white px-3 text-sm outline-none focus:border-zinc-400 dark:border-zinc-800 dark:bg-zinc-950"
-            name={`fullName-${row.citizenId}`}
+            name={`fullName-${row.cid}`}
             value={local.fullName}
             onChange={(e) => setLocal((s) => ({ ...s, fullName: e.target.value }))}
           />
@@ -441,7 +441,7 @@ function Row({
         {isEditing ? (
           <select
             className="h-9 w-full rounded-md border border-zinc-200 bg-white px-3 text-sm outline-none focus:border-zinc-400 dark:border-zinc-800 dark:bg-zinc-950"
-            name={`gender-${row.citizenId}`}
+            name={`gender-${row.cid}`}
             value={local.gender}
             onChange={(e) => setLocal((s) => ({ ...s, gender: e.target.value as EditableRow["gender"] }))}
           >
@@ -460,7 +460,7 @@ function Row({
           <input
             className="h-9 w-full rounded-md border border-zinc-200 bg-white px-3 text-sm outline-none focus:border-zinc-400 dark:border-zinc-800 dark:bg-zinc-950"
             type="date"
-            name={`birthDate-${row.citizenId}`}
+            name={`birthDate-${row.cid}`}
             value={local.birthDate}
             onChange={(e) => setLocal((s) => ({ ...s, birthDate: e.target.value }))}
           />
@@ -509,7 +509,7 @@ function Row({
                 type="button"
                 aria-label="Delete"
                 disabled={disabled}
-                onClick={() => onRequestDelete(row.citizenId)}
+                onClick={() => onRequestDelete(row.cid)}
               >
                 <Trash2 className="h-4 w-4" />
               </button>
@@ -523,13 +523,13 @@ function Row({
 
 function ConfirmDeleteDialog({
   open,
-  citizenId,
+  cid,
   disabled,
   onCancel,
   onConfirm,
 }: {
   open: boolean;
-  citizenId: string;
+  cid: string;
   disabled: boolean;
   onCancel: () => void;
   onConfirm: () => void;
@@ -556,7 +556,7 @@ function ConfirmDeleteDialog({
               Confirm delete
             </h3>
             <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-              Delete citizenId <span className="font-mono">{citizenId}</span>? This action cannot be undone.
+              Delete cid <span className="font-mono">{cid}</span>? This action cannot be undone.
             </p>
           </div>
         </div>

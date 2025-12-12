@@ -12,7 +12,7 @@ const PAGE_SIZE_OPTIONS = [10, 15, 20, 50] as const;
 const GenderSchema = z.enum(["M", "F", "O"]);
 
 const UpsertPopulationSchema = z.object({
-  citizenId: z
+  cid: z
     .string()
     .regex(/^\d{13}$/, "Citizen ID must be 13 digits"),
   fullName: z.string().min(1),
@@ -36,13 +36,13 @@ export async function upsertPopulation(input: unknown) {
   await db
     .insert(populationTable)
     .values({
-      citizenId: data.citizenId,
+      cid: data.cid,
       fullName: data.fullName,
       gender: data.gender,
       birthDate,
     })
     .onConflictDoUpdate({
-      target: populationTable.citizenId,
+      target: populationTable.cid,
       set: {
         fullName: data.fullName,
         gender: data.gender,
@@ -54,12 +54,12 @@ export async function upsertPopulation(input: unknown) {
 }
 
 const DeletePopulationSchema = z.object({
-  citizenId: z.string().regex(/^\d{13}$/),
+  cid: z.string().regex(/^\d{13}$/),
 });
 
 export async function deletePopulation(input: unknown) {
   const data = DeletePopulationSchema.parse(input);
-  await db.delete(populationTable).where(eq(populationTable.citizenId, data.citizenId));
+  await db.delete(populationTable).where(eq(populationTable.cid, data.cid));
   revalidatePath("/population");
 }
 
