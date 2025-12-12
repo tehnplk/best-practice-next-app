@@ -17,7 +17,7 @@ async function PopulationTableLoader({
 
   return (
     <PopulationTable
-      key={`${data.page}-${data.pageSize}`}
+      key={`${data.page}-${data.pageSize}-${data.sortBy}-${data.sortDir}`}
       initialRows={data.rows}
       initialPage={data.page}
       initialTotalPages={data.totalPages}

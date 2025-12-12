@@ -86,7 +86,7 @@ export async function getPopulationPage(input: unknown) {
 
   const effectiveSortBy = sortBy ?? "createdAt";
   const effectiveSortDir = sortDir ?? "desc";
-  const order = (col: any) => (effectiveSortDir === "asc" ? asc(col) : desc(col));
+  const order = (col: Parameters<typeof asc>[0]) => (effectiveSortDir === "asc" ? asc(col) : desc(col));
 
   const sortColumn =
     effectiveSortBy === "cid"

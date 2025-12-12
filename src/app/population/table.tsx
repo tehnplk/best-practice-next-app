@@ -38,6 +38,8 @@ type EditableRow = {
   birthDate: string; // yyyy-mm-dd
 };
 
+type AdmissionDraft = { admissionDate: string; hospitalName: string };
+
 function toEditable(row: PopulationRow): EditableRow {
   const d = new Date(row.birthDate);
   const yyyy = d.getFullYear();
@@ -225,10 +227,10 @@ export function PopulationTable({
   const initial = initialRows.map(toEditable);
   const [isPending, startTransition] = useTransition();
 
-  const [page, setPage] = useState<number>(initialPage);
-  const [totalPages, setTotalPages] = useState<number>(initialTotalPages);
-  const [total, setTotal] = useState<number>(initialTotal);
-  const [size, setSize] = useState<number>(pageSize);
+  const page = initialPage;
+  const totalPages = initialTotalPages;
+  const total = initialTotal;
+  const size = pageSize;
   const [loadedRows, setLoadedRows] = useState<EditableRow[]>(initial);
 
   const [currentSortBy, setCurrentSortBy] = useState<
@@ -240,9 +242,7 @@ export function PopulationTable({
   const [loadingCid, setLoadingCid] = useState<string | null>(null);
   const [admissionsByCid, setAdmissionsByCid] = useState<Record<string, AdmissionRow[]>>({});
   const [addAdmissionOpenByCid, setAddAdmissionOpenByCid] = useState<Record<string, boolean>>({});
-  const [admissionDraftByCid, setAdmissionDraftByCid] = useState<
-    Record<string, { admissionDate: string; hospitalName: string }>
-  >({});
+  const [admissionDraftByCid, setAdmissionDraftByCid] = useState<Record<string, AdmissionDraft>>({});
   const [savingAdmissionCid, setSavingAdmissionCid] = useState<string | null>(null);
 
   const [confirmDelete, setConfirmDelete] = useState<{
@@ -309,6 +309,26 @@ export function PopulationTable({
 
   function closeAddAdmission(cid: string) {
     setAddAdmissionOpenByCid((prev) => ({ ...prev, [cid]: false }));
+  }
+
+  function setAdmissionDateDraft(cid: string, value: string) {
+    setAdmissionDraftByCid((prev) => ({
+      ...prev,
+      [cid]: {
+        admissionDate: value,
+        hospitalName: prev[cid]?.hospitalName ?? "",
+      },
+    }));
+  }
+
+  function setHospitalNameDraft(cid: string, value: string) {
+    setAdmissionDraftByCid((prev) => ({
+      ...prev,
+      [cid]: {
+        admissionDate: prev[cid]?.admissionDate ?? todayIsoDate(),
+        hospitalName: value,
+      },
+    }));
   }
 
   async function saveAdmission(cid: string) {
@@ -671,124 +691,25 @@ export function PopulationTable({
                   onRequestDelete={requestDelete}
                 />
                 {expandedCid === row.cid ? (
-                  <tr className="border-b border-zinc-100 last:border-b-0 dark:border-zinc-900">
-                    <td className="px-4 py-3" colSpan={5}>
-                      <div className="rounded-lg border border-zinc-200 bg-zinc-50 p-3 text-sm dark:border-zinc-800 dark:bg-zinc-900/20">
-                        <div className="mb-3 flex items-center justify-between">
-                          <div className="text-sm font-medium text-zinc-900 dark:text-zinc-100">
-                            Admission history
-                          </div>
-                          {!addAdmissionOpenByCid[row.cid] ? (
-                            <button
-                              type="button"
-                              className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-zinc-200 bg-white text-zinc-900 disabled:opacity-50 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-50"
-                              disabled={isPending || loadingCid === row.cid || savingAdmissionCid === row.cid}
-                              aria-label="Add admission"
-                              onClick={() => toggleAddAdmission(row.cid)}
-                            >
-                              <Plus className="h-4 w-4" />
-                            </button>
-                          ) : (
-                            <div />
-                          )}
-                        </div>
-
-                        {loadingCid === row.cid ? (
-                          <div className="text-zinc-600 dark:text-zinc-400">Loading admission history...</div>
-                        ) : (
-                          <div className="overflow-x-auto">
-                            <table className="w-full text-left text-sm">
-                              <thead className="border-b border-zinc-200 text-xs uppercase tracking-wide text-zinc-500 dark:border-zinc-800 dark:text-zinc-400">
-                                <tr>
-                                  <th className="px-3 py-2">Admission date</th>
-                                  <th className="px-3 py-2">Hospital</th>
-                                </tr>
-                              </thead>
-                              <tbody>
-                                {(admissionsByCid[row.cid] ?? []).length === 0 && !addAdmissionOpenByCid[row.cid] ? (
-                                  <tr>
-                                    <td className="px-3 py-3 text-zinc-600 dark:text-zinc-400" colSpan={2}>
-                                      No admission history.
-                                    </td>
-                                  </tr>
-                                ) : null}
-
-                                {(admissionsByCid[row.cid] ?? []).map((a) => (
-                                  <tr key={a.id} className="border-b border-zinc-100 last:border-b-0 dark:border-zinc-900">
-                                    <td className="px-3 py-2 font-mono text-xs text-zinc-700 dark:text-zinc-300">
-                                      {formatAdmissionDate(a.admissionDate)}
-                                    </td>
-                                    <td className="px-3 py-2 text-zinc-900 dark:text-zinc-50">{a.hospitalName}</td>
-                                  </tr>
-                                ))}
-
-                                {addAdmissionOpenByCid[row.cid] ? (
-                                  <tr className="border-t border-zinc-200 dark:border-zinc-800">
-                                    <td className="px-3 py-2">
-                                      <input
-                                        className="h-9 w-full rounded-md border border-zinc-200 bg-white px-2 text-sm outline-none focus:border-zinc-400 dark:border-zinc-800 dark:bg-zinc-950"
-                                        type="date"
-                                        value={admissionDraftByCid[row.cid]?.admissionDate ?? ""}
-                                        onChange={(e) =>
-                                          setAdmissionDraftByCid((prev) => ({
-                                            ...prev,
-                                            [row.cid]: {
-                                              admissionDate: e.target.value,
-                                              hospitalName: prev[row.cid]?.hospitalName ?? "",
-                                            },
-                                          }))
-                                        }
-                                      />
-                                    </td>
-                                    <td className="px-3 py-2">
-                                      <div className="flex items-center gap-2">
-                                        <input
-                                          className="h-9 w-full rounded-md border border-zinc-200 bg-white px-2 text-sm outline-none focus:border-zinc-400 dark:border-zinc-800 dark:bg-zinc-950"
-                                          placeholder="Hospital name"
-                                          value={admissionDraftByCid[row.cid]?.hospitalName ?? ""}
-                                          onChange={(e) =>
-                                            setAdmissionDraftByCid((prev) => ({
-                                              ...prev,
-                                              [row.cid]: {
-                                                admissionDate: prev[row.cid]?.admissionDate ?? todayIsoDate(),
-                                                hospitalName: e.target.value,
-                                              },
-                                            }))
-                                          }
-                                        />
-                                        <button
-                                          type="button"
-                                          className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-zinc-200 bg-white text-zinc-900 disabled:opacity-50 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-50"
-                                          disabled={isPending || loadingCid === row.cid || savingAdmissionCid === row.cid}
-                                          aria-label="Save admission"
-                                          onClick={() => {
-                                            startTransition(async () => {
-                                              await saveAdmission(row.cid);
-                                            });
-                                          }}
-                                        >
-                                          <Check className="h-4 w-4" />
-                                        </button>
-                                        <button
-                                          type="button"
-                                          className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-zinc-200 bg-white text-zinc-900 disabled:opacity-50 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-50"
-                                          disabled={isPending || loadingCid === row.cid || savingAdmissionCid === row.cid}
-                                          aria-label="Cancel add admission"
-                                          onClick={() => closeAddAdmission(row.cid)}
-                                        >
-                                          <X className="h-4 w-4" />
-                                        </button>
-                                      </div>
-                                    </td>
-                                  </tr>
-                                ) : null}
-                              </tbody>
-                            </table>
-                          </div>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
+                  <AdmissionHistoryPanelRow
+                    colSpan={5}
+                    isPending={isPending}
+                    loading={loadingCid === row.cid}
+                    saving={savingAdmissionCid === row.cid}
+                    addOpen={!!addAdmissionOpenByCid[row.cid]}
+                    admissions={admissionsByCid[row.cid] ?? []}
+                    draft={admissionDraftByCid[row.cid]}
+                    onToggleAdd={() => toggleAddAdmission(row.cid)}
+                    onCloseAdd={() => closeAddAdmission(row.cid)}
+                    onChangeDate={(v) => setAdmissionDateDraft(row.cid, v)}
+                    onChangeHospitalName={(v) => setHospitalNameDraft(row.cid, v)}
+                    onSave={() =>
+                      startTransition(async () => {
+                        await saveAdmission(row.cid);
+                      })
+                    }
+                    formatAdmissionDate={formatAdmissionDate}
+                  />
                 ) : null}
               </Fragment>
             ))}
@@ -922,49 +843,210 @@ function Row({
         )}
       </td>
       <td className="px-4 py-3">
-        <div className="flex items-center justify-end gap-2">
-          {isEditing ? (
-            <>
+        <RowActionButtons
+          cid={row.cid}
+          disabled={disabled}
+          isEditing={isEditing}
+          onCancel={onCancel}
+          onCommit={onCommit}
+          onRequestDelete={onRequestDelete}
+          onStartEdit={onStartEdit}
+        />
+      </td>
+    </tr>
+  );
+}
+
+function RowActionButtons({
+  cid,
+  disabled,
+  isEditing,
+  onCommit,
+  onCancel,
+  onStartEdit,
+  onRequestDelete,
+}: {
+  cid: string;
+  disabled: boolean;
+  isEditing: boolean;
+  onCommit: () => void;
+  onCancel: () => void;
+  onStartEdit: () => void;
+  onRequestDelete: (cid: string) => void;
+}) {
+  return (
+    <div className="flex items-center justify-end gap-2">
+      {isEditing ? (
+        <>
+          <button
+            className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-zinc-200 text-zinc-900 disabled:opacity-50 dark:border-zinc-800 dark:text-zinc-50"
+            type="button"
+            aria-label="Save"
+            disabled={disabled}
+            onClick={onCommit}
+          >
+            <Check className="h-4 w-4" />
+          </button>
+          <button
+            className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-zinc-200 text-zinc-900 disabled:opacity-50 dark:border-zinc-800 dark:text-zinc-50"
+            type="button"
+            aria-label="Cancel"
+            disabled={disabled}
+            onClick={onCancel}
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </>
+      ) : (
+        <>
+          <button
+            className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-zinc-200 text-zinc-900 disabled:opacity-50 dark:border-zinc-800 dark:text-zinc-50"
+            type="button"
+            aria-label="Edit"
+            disabled={disabled}
+            onClick={onStartEdit}
+          >
+            <Pencil className="h-4 w-4" />
+          </button>
+          <button
+            className="inline-flex h-9 w-9 items-center justify-center rounded-md bg-red-600 text-white disabled:opacity-50"
+            type="button"
+            aria-label="Delete"
+            disabled={disabled}
+            onClick={() => onRequestDelete(cid)}
+          >
+            <Trash2 className="h-4 w-4" />
+          </button>
+        </>
+      )}
+    </div>
+  );
+}
+
+function AdmissionHistoryPanelRow({
+  colSpan,
+  isPending,
+  loading,
+  saving,
+  addOpen,
+  admissions,
+  draft,
+  onToggleAdd,
+  onCloseAdd,
+  onChangeDate,
+  onChangeHospitalName,
+  onSave,
+  formatAdmissionDate,
+}: {
+  colSpan: number;
+  isPending: boolean;
+  loading: boolean;
+  saving: boolean;
+  addOpen: boolean;
+  admissions: AdmissionRow[];
+  draft?: AdmissionDraft;
+  onToggleAdd: () => void;
+  onCloseAdd: () => void;
+  onChangeDate: (value: string) => void;
+  onChangeHospitalName: (value: string) => void;
+  onSave: () => void;
+  formatAdmissionDate: (value: AdmissionRow["admissionDate"]) => string;
+}) {
+  const busy = isPending || loading || saving;
+
+  return (
+    <tr className="border-b border-zinc-100 last:border-b-0 dark:border-zinc-900">
+      <td className="px-4 py-3" colSpan={colSpan}>
+        <div className="rounded-lg border border-zinc-200 bg-zinc-50 p-3 text-sm dark:border-zinc-800 dark:bg-zinc-900/20">
+          <div className="mb-3 flex items-center justify-between">
+            <div className="text-sm font-medium text-zinc-900 dark:text-zinc-100">Admission history</div>
+            {!addOpen ? (
               <button
-                className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-zinc-200 text-zinc-900 disabled:opacity-50 dark:border-zinc-800 dark:text-zinc-50"
                 type="button"
-                aria-label="Save"
-                disabled={disabled}
-                onClick={onCommit}
+                className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-zinc-200 bg-white text-zinc-900 disabled:opacity-50 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-50"
+                disabled={busy}
+                aria-label="Add admission"
+                onClick={onToggleAdd}
               >
-                <Check className="h-4 w-4" />
+                <Plus className="h-4 w-4" />
               </button>
-              <button
-                className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-zinc-200 text-zinc-900 disabled:opacity-50 dark:border-zinc-800 dark:text-zinc-50"
-                type="button"
-                aria-label="Cancel"
-                disabled={disabled}
-                onClick={onCancel}
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </>
+            ) : (
+              <div />
+            )}
+          </div>
+
+          {loading ? (
+            <div className="text-zinc-600 dark:text-zinc-400">Loading admission history...</div>
           ) : (
-            <>
-              <button
-                className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-zinc-200 text-zinc-900 disabled:opacity-50 dark:border-zinc-800 dark:text-zinc-50"
-                type="button"
-                aria-label="Edit"
-                disabled={disabled}
-                onClick={onStartEdit}
-              >
-                <Pencil className="h-4 w-4" />
-              </button>
-              <button
-                className="inline-flex h-9 w-9 items-center justify-center rounded-md bg-red-600 text-white disabled:opacity-50"
-                type="button"
-                aria-label="Delete"
-                disabled={disabled}
-                onClick={() => onRequestDelete(row.cid)}
-              >
-                <Trash2 className="h-4 w-4" />
-              </button>
-            </>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-sm">
+                <thead className="border-b border-zinc-200 text-xs uppercase tracking-wide text-zinc-500 dark:border-zinc-800 dark:text-zinc-400">
+                  <tr>
+                    <th className="px-3 py-2">Admission date</th>
+                    <th className="px-3 py-2">Hospital</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {admissions.length === 0 && !addOpen ? (
+                    <tr>
+                      <td className="px-3 py-3 text-zinc-600 dark:text-zinc-400" colSpan={2}>
+                        No admission history.
+                      </td>
+                    </tr>
+                  ) : null}
+
+                  {admissions.map((a) => (
+                    <tr key={a.id} className="border-b border-zinc-100 last:border-b-0 dark:border-zinc-900">
+                      <td className="px-3 py-2 font-mono text-xs text-zinc-700 dark:text-zinc-300">
+                        {formatAdmissionDate(a.admissionDate)}
+                      </td>
+                      <td className="px-3 py-2 text-zinc-900 dark:text-zinc-50">{a.hospitalName}</td>
+                    </tr>
+                  ))}
+
+                  {addOpen ? (
+                    <tr className="border-t border-zinc-200 dark:border-zinc-800">
+                      <td className="px-3 py-2">
+                        <input
+                          className="h-9 w-full rounded-md border border-zinc-200 bg-white px-2 text-sm outline-none focus:border-zinc-400 dark:border-zinc-800 dark:bg-zinc-950"
+                          type="date"
+                          value={draft?.admissionDate ?? ""}
+                          onChange={(e) => onChangeDate(e.target.value)}
+                        />
+                      </td>
+                      <td className="px-3 py-2">
+                        <div className="flex items-center gap-2">
+                          <input
+                            className="h-9 w-full rounded-md border border-zinc-200 bg-white px-2 text-sm outline-none focus:border-zinc-400 dark:border-zinc-800 dark:bg-zinc-950"
+                            placeholder="Hospital name"
+                            value={draft?.hospitalName ?? ""}
+                            onChange={(e) => onChangeHospitalName(e.target.value)}
+                          />
+                          <button
+                            type="button"
+                            className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-zinc-200 bg-white text-zinc-900 disabled:opacity-50 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-50"
+                            disabled={busy}
+                            aria-label="Save admission"
+                            onClick={onSave}
+                          >
+                            <Check className="h-4 w-4" />
+                          </button>
+                          <button
+                            type="button"
+                            className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-zinc-200 bg-white text-zinc-900 disabled:opacity-50 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-50"
+                            disabled={busy}
+                            aria-label="Cancel add admission"
+                            onClick={onCloseAdd}
+                          >
+                            <X className="h-4 w-4" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ) : null}
+                </tbody>
+              </table>
+            </div>
           )}
         </div>
       </td>
