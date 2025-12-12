@@ -4,16 +4,34 @@ import { desc } from "drizzle-orm";
 import { Suspense } from "react";
 import { PopulationTable } from "./table";
 
-async function PopulationTableLoader() {
+const PAGE_SIZE = 15;
+
+async function PopulationTableLoader({ page }: { page: number }) {
+  const offset = (page - 1) * PAGE_SIZE;
   const rows = await db
     .select()
     .from(populationTable)
-    .orderBy(desc(populationTable.birthDate));
+    .orderBy(desc(populationTable.birthDate))
+    .limit(PAGE_SIZE + 1)
+    .offset(offset);
 
-  return <PopulationTable initialRows={rows} />;
+  const hasMore = rows.length > PAGE_SIZE;
+  const pageRows = rows.slice(0, PAGE_SIZE);
+
+  return (
+    <PopulationTable
+      initialRows={pageRows}
+      initialPage={page}
+      initialHasMore={hasMore}
+    />
+  );
 }
 
-export default function PopulationPage() {
+export default async function PopulationPage(props: {
+  searchParams: Promise<{ page?: string }>;
+}) {
+  const searchParams = await props.searchParams;
+  const page = Math.max(1, Number(searchParams?.page ?? "1") || 1);
   return (
     <div className="min-h-screen bg-zinc-50 px-6 py-10 text-zinc-950 dark:bg-black dark:text-zinc-50">
       <div className="mx-auto w-full max-w-5xl">
@@ -31,7 +49,7 @@ export default function PopulationPage() {
             </div>
           }
         >
-          <PopulationTableLoader />
+          <PopulationTableLoader page={page} />
         </Suspense>
       </div>
     </div>

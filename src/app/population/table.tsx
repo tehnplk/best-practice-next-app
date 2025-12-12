@@ -3,8 +3,9 @@
 import type { PopulationRow } from "@/db/schema";
 import { AlertTriangle, Check, Pencil, Trash2, X } from "lucide-react";
 import { useMemo, useOptimistic, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
-import { deletePopulation, upsertPopulation } from "./actions";
+import { deletePopulation, getPopulationPage, upsertPopulation } from "./actions";
 
 type EditableRow = {
   citizenId: string;
@@ -35,9 +36,30 @@ function emptyRow(): EditableRow {
   };
 }
 
-export function PopulationTable({ initialRows }: { initialRows: PopulationRow[] }) {
+function mergeRowsByCitizenId(existing: EditableRow[], incoming: EditableRow[]) {
+  const map = new Map<string, EditableRow>();
+  for (const r of existing) map.set(r.citizenId, r);
+  for (const r of incoming) map.set(r.citizenId, r);
+  return Array.from(map.values());
+}
+
+export function PopulationTable({
+  initialRows,
+  initialPage,
+  initialHasMore,
+}: {
+  initialRows: PopulationRow[];
+  initialPage: number;
+  initialHasMore: boolean;
+}) {
+  const router = useRouter();
+
   const initial = useMemo(() => initialRows.map(toEditable), [initialRows]);
   const [isPending, startTransition] = useTransition();
+
+  const [page, setPage] = useState<number>(initialPage);
+  const [hasMore, setHasMore] = useState<boolean>(initialHasMore);
+  const [loadedRows, setLoadedRows] = useState<EditableRow[]>(initial);
 
   const [confirmDelete, setConfirmDelete] = useState<{
     open: boolean;
@@ -45,7 +67,7 @@ export function PopulationTable({ initialRows }: { initialRows: PopulationRow[] 
   }>({ open: false, citizenId: "" });
 
   const [optimisticRows, setOptimisticRows] = useOptimistic(
-    initial,
+    loadedRows,
     (state: EditableRow[], next: { type: "upsert" | "delete"; row?: EditableRow; citizenId?: string }) => {
       if (next.type === "delete" && next.citizenId) {
         return state.filter((r) => r.citizenId !== next.citizenId);
@@ -66,6 +88,7 @@ export function PopulationTable({ initialRows }: { initialRows: PopulationRow[] 
       setOptimisticRows({ type: "upsert", row });
       try {
         await upsertPopulation(row);
+        setLoadedRows((prev) => mergeRowsByCitizenId(prev, [row]));
         toast.success("Saved");
       } catch (e) {
         toast.error(e instanceof Error ? e.message : "Save failed");
@@ -92,9 +115,28 @@ export function PopulationTable({ initialRows }: { initialRows: PopulationRow[] 
       setOptimisticRows({ type: "delete", citizenId });
       try {
         await deletePopulation({ citizenId });
+        setLoadedRows((prev) => prev.filter((r) => r.citizenId !== citizenId));
         toast.success("Deleted");
       } catch (e) {
         toast.error(e instanceof Error ? e.message : "Delete failed");
+      }
+    });
+  }
+
+  function onLoadMore() {
+    startTransition(async () => {
+      try {
+        const nextPage = page + 1;
+        const res = await getPopulationPage({ page: nextPage });
+        const nextRows = res.rows.map(toEditable);
+
+        setLoadedRows((prev) => mergeRowsByCitizenId(prev, nextRows));
+        setPage(nextPage);
+        setHasMore(res.hasMore);
+
+        router.replace(`/population?page=${nextPage}`);
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : "Load more failed");
       }
     });
   }
@@ -182,6 +224,17 @@ export function PopulationTable({ initialRows }: { initialRows: PopulationRow[] 
             ) : null}
           </tbody>
         </table>
+      </div>
+
+      <div className="flex items-center justify-center border-t border-zinc-200 p-4 dark:border-zinc-800">
+        <button
+          className="inline-flex h-10 items-center justify-center rounded-md border border-zinc-200 bg-white px-4 text-sm font-medium text-zinc-900 disabled:opacity-50 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-50"
+          type="button"
+          disabled={!hasMore || isPending}
+          onClick={onLoadMore}
+        >
+          {hasMore ? (isPending ? "Loading..." : "Load more") : "No more"}
+        </button>
       </div>
 
       <ConfirmDeleteDialog
