@@ -1,6 +1,7 @@
 "use client";
 
 import type { PopulationRow } from "@/db/schema";
+import { Check, Pencil, Trash2, X } from "lucide-react";
 import { useMemo, useOptimistic, useState, useTransition } from "react";
 import { deletePopulation, upsertPopulation } from "./actions";
 
@@ -167,7 +168,23 @@ function Row({
   onSave: (row: EditableRow) => void;
   onDelete: (citizenId: string) => void;
 }) {
+  const [isEditing, setIsEditing] = useState(false);
   const [local, setLocal] = useState<EditableRow>(row);
+
+  function onStartEdit() {
+    setLocal(row);
+    setIsEditing(true);
+  }
+
+  function onCancel() {
+    setLocal(row);
+    setIsEditing(false);
+  }
+
+  function onCommit() {
+    onSave(local);
+    setIsEditing(false);
+  }
 
   return (
     <tr className="border-b border-zinc-100 last:border-b-0 dark:border-zinc-900">
@@ -175,50 +192,97 @@ function Row({
         {row.citizenId}
       </td>
       <td className="px-4 py-3">
-        <input
-          className="h-9 w-full rounded-md border border-zinc-200 bg-white px-3 text-sm outline-none focus:border-zinc-400 dark:border-zinc-800 dark:bg-zinc-950"
-          name={`fullName-${row.citizenId}`}
-          value={local.fullName}
-          onChange={(e) => setLocal((s) => ({ ...s, fullName: e.target.value }))}
-        />
+        {isEditing ? (
+          <input
+            className="h-9 w-full rounded-md border border-zinc-200 bg-white px-3 text-sm outline-none focus:border-zinc-400 dark:border-zinc-800 dark:bg-zinc-950"
+            name={`fullName-${row.citizenId}`}
+            value={local.fullName}
+            onChange={(e) => setLocal((s) => ({ ...s, fullName: e.target.value }))}
+          />
+        ) : (
+          <div className="h-9 w-full rounded-md px-1.5 text-sm leading-9 text-zinc-900 dark:text-zinc-50">
+            {row.fullName}
+          </div>
+        )}
       </td>
       <td className="px-4 py-3">
-        <select
-          className="h-9 w-full rounded-md border border-zinc-200 bg-white px-3 text-sm outline-none focus:border-zinc-400 dark:border-zinc-800 dark:bg-zinc-950"
-          name={`gender-${row.citizenId}`}
-          value={local.gender}
-          onChange={(e) => setLocal((s) => ({ ...s, gender: e.target.value as EditableRow["gender"] }))}
-        >
-          <option value="M">M</option>
-          <option value="F">F</option>
-          <option value="O">O</option>
-        </select>
+        {isEditing ? (
+          <select
+            className="h-9 w-full rounded-md border border-zinc-200 bg-white px-3 text-sm outline-none focus:border-zinc-400 dark:border-zinc-800 dark:bg-zinc-950"
+            name={`gender-${row.citizenId}`}
+            value={local.gender}
+            onChange={(e) => setLocal((s) => ({ ...s, gender: e.target.value as EditableRow["gender"] }))}
+          >
+            <option value="M">M</option>
+            <option value="F">F</option>
+            <option value="O">O</option>
+          </select>
+        ) : (
+          <div className="h-9 w-full rounded-md px-1.5 text-sm leading-9 text-zinc-900 dark:text-zinc-50">
+            {row.gender}
+          </div>
+        )}
       </td>
       <td className="px-4 py-3">
-        <input
-          className="h-9 w-full rounded-md border border-zinc-200 bg-white px-3 text-sm outline-none focus:border-zinc-400 dark:border-zinc-800 dark:bg-zinc-950"
-          type="date"
-          name={`birthDate-${row.citizenId}`}
-          value={local.birthDate}
-          onChange={(e) => setLocal((s) => ({ ...s, birthDate: e.target.value }))}
-        />
+        {isEditing ? (
+          <input
+            className="h-9 w-full rounded-md border border-zinc-200 bg-white px-3 text-sm outline-none focus:border-zinc-400 dark:border-zinc-800 dark:bg-zinc-950"
+            type="date"
+            name={`birthDate-${row.citizenId}`}
+            value={local.birthDate}
+            onChange={(e) => setLocal((s) => ({ ...s, birthDate: e.target.value }))}
+          />
+        ) : (
+          <div className="h-9 w-full rounded-md px-1.5 text-sm leading-9 text-zinc-900 dark:text-zinc-50">
+            {row.birthDate}
+          </div>
+        )}
       </td>
       <td className="px-4 py-3">
         <div className="flex items-center justify-end gap-2">
-          <button
-            className="h-9 rounded-md border border-zinc-200 px-3 text-xs font-medium text-zinc-900 disabled:opacity-50 dark:border-zinc-800 dark:text-zinc-50"
-            disabled={disabled}
-            onClick={() => onSave(local)}
-          >
-            Save
-          </button>
-          <button
-            className="h-9 rounded-md bg-red-600 px-3 text-xs font-medium text-white disabled:opacity-50"
-            disabled={disabled}
-            onClick={() => onDelete(row.citizenId)}
-          >
-            Delete
-          </button>
+          {isEditing ? (
+            <>
+              <button
+                className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-zinc-200 text-zinc-900 disabled:opacity-50 dark:border-zinc-800 dark:text-zinc-50"
+                type="button"
+                aria-label="Save"
+                disabled={disabled}
+                onClick={onCommit}
+              >
+                <Check className="h-4 w-4" />
+              </button>
+              <button
+                className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-zinc-200 text-zinc-900 disabled:opacity-50 dark:border-zinc-800 dark:text-zinc-50"
+                type="button"
+                aria-label="Cancel"
+                disabled={disabled}
+                onClick={onCancel}
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </>
+          ) : (
+            <>
+              <button
+                className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-zinc-200 text-zinc-900 disabled:opacity-50 dark:border-zinc-800 dark:text-zinc-50"
+                type="button"
+                aria-label="Edit"
+                disabled={disabled}
+                onClick={onStartEdit}
+              >
+                <Pencil className="h-4 w-4" />
+              </button>
+              <button
+                className="inline-flex h-9 w-9 items-center justify-center rounded-md bg-red-600 text-white disabled:opacity-50"
+                type="button"
+                aria-label="Delete"
+                disabled={disabled}
+                onClick={() => onDelete(row.citizenId)}
+              >
+                <Trash2 className="h-4 w-4" />
+              </button>
+            </>
+          )}
         </div>
       </td>
     </tr>
