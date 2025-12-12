@@ -1,7 +1,7 @@
 "use server";
 
 import { db } from "@/db";
-import { populationTable } from "@/db/schema";
+import { hospitalAdmissionHistoryTable, populationTable } from "@/db/schema";
 import { count, desc, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
@@ -94,5 +94,25 @@ export async function getPopulationPage(input: unknown) {
     total,
     totalPages,
     pageSizeOptions: PAGE_SIZE_OPTIONS,
+  };
+}
+
+const GetHospitalAdmissionsByCidSchema = z.object({
+  cid: z.string().regex(/^\d{13}$/),
+});
+
+export async function getHospitalAdmissionsByCid(input: unknown) {
+  const { cid } = GetHospitalAdmissionsByCidSchema.parse(input);
+  const rows = await db
+    .select()
+    .from(hospitalAdmissionHistoryTable)
+    .where(eq(hospitalAdmissionHistoryTable.cid, cid))
+    .orderBy(desc(hospitalAdmissionHistoryTable.admissionDate));
+
+  return {
+    rows: rows.map((r) => ({
+      ...r,
+      admissionDate: r.admissionDate.getTime(),
+    })),
   };
 }

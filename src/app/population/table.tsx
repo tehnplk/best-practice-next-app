@@ -1,11 +1,18 @@
 "use client";
 
 import type { PopulationRow } from "@/db/schema";
-import { AlertTriangle, Check, Pencil, Trash2, X } from "lucide-react";
-import { useOptimistic, useState, useTransition } from "react";
+import { AlertTriangle, Check, ChevronDown, ChevronRight, Pencil, Trash2, X } from "lucide-react";
+import { Fragment, useOptimistic, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
-import { deletePopulation, upsertPopulation } from "./actions";
+import { deletePopulation, getHospitalAdmissionsByCid, upsertPopulation } from "./actions";
+
+type AdmissionRow = {
+  id: number;
+  cid: string;
+  admissionDate: number;
+  hospitalName: string;
+};
 
 type EditableRow = {
   cid: string;
@@ -77,6 +84,10 @@ export function PopulationTable({
   const [size, setSize] = useState<number>(pageSize);
   const [loadedRows, setLoadedRows] = useState<EditableRow[]>(initial);
 
+  const [expandedCid, setExpandedCid] = useState<string | null>(null);
+  const [loadingCid, setLoadingCid] = useState<string | null>(null);
+  const [admissionsByCid, setAdmissionsByCid] = useState<Record<string, AdmissionRow[]>>({});
+
   const [confirmDelete, setConfirmDelete] = useState<{
     open: boolean;
     cid: string;
@@ -105,6 +116,34 @@ export function PopulationTable({
   );
 
   const [draft, setDraft] = useState<EditableRow>(() => emptyRow());
+
+  function formatAdmissionDate(value: AdmissionRow["admissionDate"]) {
+    const d = new Date(value);
+    if (Number.isNaN(d.getTime())) return "-";
+    return d.toLocaleDateString();
+  }
+
+  function toggleExpand(cid: string) {
+    startTransition(async () => {
+      if (expandedCid === cid) {
+        setExpandedCid(null);
+        return;
+      }
+
+      setExpandedCid(cid);
+      if (admissionsByCid[cid]) return;
+
+      setLoadingCid(cid);
+      try {
+        const res = await getHospitalAdmissionsByCid({ cid });
+        setAdmissionsByCid((prev) => ({ ...prev, [cid]: res.rows }));
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : "Load admission history failed");
+      } finally {
+        setLoadingCid((cur) => (cur === cid ? null : cur));
+      }
+    });
+  }
 
   function saveRow(row: EditableRow) {
     startTransition(async () => {
@@ -359,13 +398,50 @@ export function PopulationTable({
           </thead>
           <tbody>
             {optimisticRows.map((row) => (
-              <Row
-                key={row.cid}
-                row={row}
-                disabled={isPending}
-                onSave={saveRow}
-                onRequestDelete={requestDelete}
-              />
+              <Fragment key={row.cid}>
+                <Row
+                  row={row}
+                  disabled={isPending}
+                  expanded={expandedCid === row.cid}
+                  onToggleExpand={toggleExpand}
+                  onSave={saveRow}
+                  onRequestDelete={requestDelete}
+                />
+                {expandedCid === row.cid ? (
+                  <tr className="border-b border-zinc-100 last:border-b-0 dark:border-zinc-900">
+                    <td className="px-4 py-3" colSpan={5}>
+                      <div className="rounded-lg border border-zinc-200 bg-zinc-50 p-3 text-sm dark:border-zinc-800 dark:bg-zinc-900/20">
+                        {loadingCid === row.cid ? (
+                          <div className="text-zinc-600 dark:text-zinc-400">Loading admission history...</div>
+                        ) : (admissionsByCid[row.cid] ?? []).length === 0 ? (
+                          <div className="text-zinc-600 dark:text-zinc-400">No admission history.</div>
+                        ) : (
+                          <div className="overflow-x-auto">
+                            <table className="w-full text-left text-sm">
+                              <thead className="border-b border-zinc-200 text-xs uppercase tracking-wide text-zinc-500 dark:border-zinc-800 dark:text-zinc-400">
+                                <tr>
+                                  <th className="px-3 py-2">Admission date</th>
+                                  <th className="px-3 py-2">Hospital</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {(admissionsByCid[row.cid] ?? []).map((a) => (
+                                  <tr key={a.id} className="border-b border-zinc-100 last:border-b-0 dark:border-zinc-900">
+                                    <td className="px-3 py-2 font-mono text-xs text-zinc-700 dark:text-zinc-300">
+                                      {formatAdmissionDate(a.admissionDate)}
+                                    </td>
+                                    <td className="px-3 py-2 text-zinc-900 dark:text-zinc-50">{a.hospitalName}</td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ) : null}
+              </Fragment>
             ))}
             {optimisticRows.length === 0 ? (
               <tr>
@@ -392,11 +468,15 @@ export function PopulationTable({
 function Row({
   row,
   disabled,
+  expanded,
+  onToggleExpand,
   onSave,
   onRequestDelete,
 }: {
   row: EditableRow;
   disabled: boolean;
+  expanded: boolean;
+  onToggleExpand: (cid: string) => void;
   onSave: (row: EditableRow) => void;
   onRequestDelete: (cid: string) => void;
 }) {
@@ -421,7 +501,16 @@ function Row({
   return (
     <tr className="border-b border-zinc-100 last:border-b-0 dark:border-zinc-900">
       <td className="px-4 py-3 font-mono text-xs text-zinc-700 dark:text-zinc-300">
-        {row.cid}
+        <button
+          type="button"
+          className="inline-flex items-center gap-2 hover:underline"
+          onClick={() => onToggleExpand(row.cid)}
+          disabled={disabled}
+          aria-label={expanded ? "Collapse" : "Expand"}
+        >
+          {expanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+          {row.cid}
+        </button>
       </td>
       <td className="px-4 py-3">
         {isEditing ? (
