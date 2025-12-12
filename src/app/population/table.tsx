@@ -3,6 +3,7 @@
 import type { PopulationRow } from "@/db/schema";
 import { Check, Pencil, Trash2, X } from "lucide-react";
 import { useMemo, useOptimistic, useState, useTransition } from "react";
+import toast from "react-hot-toast";
 import { deletePopulation, upsertPopulation } from "./actions";
 
 type EditableRow = {
@@ -58,14 +59,24 @@ export function PopulationTable({ initialRows }: { initialRows: PopulationRow[] 
   function onSave(row: EditableRow) {
     startTransition(async () => {
       setOptimisticRows({ type: "upsert", row });
-      await upsertPopulation(row);
+      try {
+        await upsertPopulation(row);
+        toast.success("Saved");
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : "Save failed");
+      }
     });
   }
 
   function onDelete(citizenId: string) {
     startTransition(async () => {
       setOptimisticRows({ type: "delete", citizenId });
-      await deletePopulation({ citizenId });
+      try {
+        await deletePopulation({ citizenId });
+        toast.success("Deleted");
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : "Delete failed");
+      }
     });
   }
 

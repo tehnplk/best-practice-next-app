@@ -17,6 +17,7 @@
     "lucide-react": "^0.541.0",
     "next": "16.0.8",
     "react": "19.2.1",
+    "react-hot-toast": "^2.6.0",
     "react-dom": "19.2.1",
     "zod": "^4.1.12"
   },
