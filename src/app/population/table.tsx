@@ -1,7 +1,18 @@
 "use client";
 
 import type { PopulationRow } from "@/db/schema";
-import { AlertTriangle, Check, ChevronDown, ChevronRight, Pencil, Trash2, X } from "lucide-react";
+import {
+  AlertTriangle,
+  ArrowDown,
+  ArrowUp,
+  ArrowUpDown,
+  Check,
+  ChevronDown,
+  ChevronRight,
+  Pencil,
+  Trash2,
+  X,
+} from "lucide-react";
 import { Fragment, useOptimistic, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
@@ -32,6 +43,132 @@ function toEditable(row: PopulationRow): EditableRow {
     gender: row.gender as EditableRow["gender"],
     birthDate: `${yyyy}-${mm}-${dd}`,
   };
+}
+
+function AddPopulationDialog({
+  open,
+  disabled,
+  draft,
+  onChangeDraft,
+  onCancel,
+  onSave,
+}: {
+  open: boolean;
+  disabled: boolean;
+  draft: EditableRow;
+  onChangeDraft: (next: EditableRow | ((prev: EditableRow) => EditableRow)) => void;
+  onCancel: () => void;
+  onSave: () => void;
+}) {
+  if (!open) return null;
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Add population"
+      onMouseDown={(e) => {
+        if (e.target === e.currentTarget) onCancel();
+      }}
+    >
+      <div className="w-full max-w-2xl rounded-2xl border border-zinc-200 bg-white p-5 shadow-xl dark:border-zinc-800 dark:bg-zinc-950">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <h3 className="text-base font-semibold text-zinc-950 dark:text-zinc-50">Add / Save</h3>
+            <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">Create a new population record.</p>
+          </div>
+          <button
+            type="button"
+            className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-zinc-200 text-zinc-900 disabled:opacity-50 dark:border-zinc-800 dark:text-zinc-50"
+            aria-label="Close"
+            disabled={disabled}
+            onClick={onCancel}
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
+          <div className="space-y-1">
+            <label className="text-xs font-medium text-zinc-700 dark:text-zinc-300" htmlFor="add-cid">
+              CID (13 digits)
+            </label>
+            <input
+              id="add-cid"
+              className="h-10 w-full rounded-md border border-zinc-200 bg-white px-3 text-sm outline-none focus:border-zinc-400 dark:border-zinc-800 dark:bg-zinc-950"
+              placeholder="1234567890123"
+              value={draft.cid}
+              onChange={(e) => onChangeDraft((s) => ({ ...s, cid: e.target.value }))}
+            />
+          </div>
+
+          <div className="space-y-1">
+            <label className="text-xs font-medium text-zinc-700 dark:text-zinc-300" htmlFor="add-gender">
+              Gender
+            </label>
+            <select
+              id="add-gender"
+              className="h-10 w-full rounded-md border border-zinc-200 bg-white px-3 text-sm outline-none focus:border-zinc-400 dark:border-zinc-800 dark:bg-zinc-950"
+              value={draft.gender}
+              onChange={(e) => onChangeDraft((s) => ({ ...s, gender: e.target.value as EditableRow["gender"] }))}
+            >
+              <option value="M">M</option>
+              <option value="F">F</option>
+              <option value="O">O</option>
+            </select>
+          </div>
+
+          <div className="space-y-1 md:col-span-2">
+            <label className="text-xs font-medium text-zinc-700 dark:text-zinc-300" htmlFor="add-fullname">
+              Full name
+            </label>
+            <input
+              id="add-fullname"
+              className="h-10 w-full rounded-md border border-zinc-200 bg-white px-3 text-sm outline-none focus:border-zinc-400 dark:border-zinc-800 dark:bg-zinc-950"
+              placeholder="Full name"
+              value={draft.fullName}
+              onChange={(e) => onChangeDraft((s) => ({ ...s, fullName: e.target.value }))}
+            />
+          </div>
+
+          <div className="space-y-1">
+            <label className="text-xs font-medium text-zinc-700 dark:text-zinc-300" htmlFor="add-birthdate">
+              Birth date
+            </label>
+            <input
+              id="add-birthdate"
+              className="h-10 w-full rounded-md border border-zinc-200 bg-white px-3 text-sm outline-none focus:border-zinc-400 dark:border-zinc-800 dark:bg-zinc-950"
+              type="date"
+              value={draft.birthDate}
+              onChange={(e) => onChangeDraft((s) => ({ ...s, birthDate: e.target.value }))}
+            />
+          </div>
+        </div>
+
+        <div className="mt-5 flex justify-end gap-2">
+          <button
+            className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-zinc-200 px-4 text-sm font-medium text-zinc-900 disabled:opacity-50 dark:border-zinc-800 dark:text-zinc-50"
+            type="button"
+            aria-label="Cancel"
+            disabled={disabled}
+            onClick={onCancel}
+          >
+            Cancel
+          </button>
+          <button
+            className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-zinc-950 px-4 text-sm font-medium text-white disabled:opacity-50 dark:bg-zinc-50 dark:text-zinc-950"
+            type="button"
+            aria-label="Save"
+            disabled={disabled}
+            onClick={onSave}
+          >
+            Save
+          </button>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 function emptyRow(): EditableRow {
@@ -65,6 +202,8 @@ export function PopulationTable({
   initialTotal,
   pageSize,
   pageSizeOptions,
+  sortBy,
+  sortDir,
 }: {
   initialRows: PopulationRow[];
   initialPage: number;
@@ -72,6 +211,8 @@ export function PopulationTable({
   initialTotal: number;
   pageSize: number;
   pageSizeOptions: readonly number[];
+  sortBy: "createdAt" | "cid" | "fullName" | "gender" | "birthDate";
+  sortDir: "asc" | "desc";
 }) {
   const router = useRouter();
 
@@ -83,6 +224,11 @@ export function PopulationTable({
   const [total, setTotal] = useState<number>(initialTotal);
   const [size, setSize] = useState<number>(pageSize);
   const [loadedRows, setLoadedRows] = useState<EditableRow[]>(initial);
+
+  const [currentSortBy, setCurrentSortBy] = useState<
+    "createdAt" | "cid" | "fullName" | "gender" | "birthDate"
+  >(sortBy);
+  const [currentSortDir, setCurrentSortDir] = useState<"asc" | "desc">(sortDir);
 
   const [expandedCid, setExpandedCid] = useState<string | null>(null);
   const [loadingCid, setLoadingCid] = useState<string | null>(null);
@@ -116,6 +262,7 @@ export function PopulationTable({
   );
 
   const [draft, setDraft] = useState<EditableRow>(() => emptyRow());
+  const [addOpen, setAddOpen] = useState(false);
 
   function formatAdmissionDate(value: AdmissionRow["admissionDate"]) {
     const d = new Date(value);
@@ -158,7 +305,16 @@ export function PopulationTable({
     });
   }
 
-  function addDraft() {
+  function openAddModal() {
+    setDraft(emptyRow());
+    setAddOpen(true);
+  }
+
+  function closeAddModal() {
+    setAddOpen(false);
+  }
+
+  async function saveDraftFromModal() {
     const errors: string[] = [];
 
     if (!isNonEmpty(draft.cid)) {
@@ -190,17 +346,16 @@ export function PopulationTable({
     }
 
     const row = { ...draft };
-    startTransition(async () => {
-      setOptimisticRows({ type: "upsert", row });
-      try {
-        await upsertPopulation(row);
-        setLoadedRows((prev) => mergeRowsByCitizenId(prev, [row]));
-        setDraft(emptyRow());
-        toast.success("Saved");
-      } catch (e) {
-        toast.error(e instanceof Error ? e.message : "Save failed");
-      }
-    });
+    setOptimisticRows({ type: "upsert", row });
+    try {
+      await upsertPopulation(row);
+      setLoadedRows((prev) => mergeRowsByCitizenId(prev, [row]));
+      setDraft(emptyRow());
+      toast.success("Saved");
+      closeAddModal();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Save failed");
+    }
   }
 
   function requestDelete(citizenId: string) {
@@ -237,8 +392,30 @@ export function PopulationTable({
       const search = new URLSearchParams();
       search.set("page", String(target));
       search.set("pageSize", String(nextSize));
+      search.set("sortBy", currentSortBy);
+      search.set("sortDir", currentSortDir);
       router.replace(`/population?${search.toString()}`);
     });
+  }
+
+  function setSort(nextSortBy: "createdAt" | "cid" | "fullName" | "gender" | "birthDate") {
+    const nextDir = nextSortBy === currentSortBy ? (currentSortDir === "asc" ? "desc" : "asc") : "asc";
+    setCurrentSortBy(nextSortBy);
+    setCurrentSortDir(nextDir);
+
+    startTransition(() => {
+      const search = new URLSearchParams();
+      search.set("page", "1");
+      search.set("pageSize", String(size));
+      search.set("sortBy", nextSortBy);
+      search.set("sortDir", nextDir);
+      router.replace(`/population?${search.toString()}`);
+    });
+  }
+
+  function SortIcon({ column }: { column: typeof currentSortBy }) {
+    if (currentSortBy !== column) return <ArrowUpDown className="h-3.5 w-3.5" />;
+    return currentSortDir === "asc" ? <ArrowUp className="h-3.5 w-3.5" /> : <ArrowDown className="h-3.5 w-3.5" />;
   }
 
   function onChangePageSize(event: React.ChangeEvent<HTMLSelectElement>) {
@@ -338,44 +515,11 @@ export function PopulationTable({
             </div>
           </div>
         </div>
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-5">
-          <input
-            className="h-10 rounded-md border border-zinc-200 bg-white px-3 text-sm outline-none focus:border-zinc-400 dark:border-zinc-800 dark:bg-zinc-950"
-            placeholder="Citizen ID (13 digits)"
-            name="cid"
-            value={draft.cid}
-            onChange={(e) => setDraft((s) => ({ ...s, cid: e.target.value }))}
-          />
-          <input
-            className="h-10 rounded-md border border-zinc-200 bg-white px-3 text-sm outline-none focus:border-zinc-400 dark:border-zinc-800 dark:bg-zinc-950 md:col-span-2"
-            placeholder="Full name"
-            name="fullName"
-            value={draft.fullName}
-            onChange={(e) => setDraft((s) => ({ ...s, fullName: e.target.value }))}
-          />
-          <select
-            className="h-10 rounded-md border border-zinc-200 bg-white px-3 text-sm outline-none focus:border-zinc-400 dark:border-zinc-800 dark:bg-zinc-950"
-            name="gender"
-            value={draft.gender}
-            onChange={(e) => setDraft((s) => ({ ...s, gender: e.target.value as EditableRow["gender"] }))}
-          >
-            <option value="M">M</option>
-            <option value="F">F</option>
-            <option value="O">O</option>
-          </select>
-          <input
-            className="h-10 rounded-md border border-zinc-200 bg-white px-3 text-sm outline-none focus:border-zinc-400 dark:border-zinc-800 dark:bg-zinc-950"
-            type="date"
-            name="birthDate"
-            value={draft.birthDate}
-            onChange={(e) => setDraft((s) => ({ ...s, birthDate: e.target.value }))}
-          />
-        </div>
         <div className="mt-3 flex items-center justify-between">
           <button
             className="h-10 rounded-md bg-zinc-950 px-4 text-sm font-medium text-white disabled:opacity-50 dark:bg-zinc-50 dark:text-zinc-950"
             disabled={isPending}
-            onClick={addDraft}
+            onClick={openAddModal}
           >
             Add / Save
           </button>
@@ -389,10 +533,50 @@ export function PopulationTable({
         <table className="w-full text-left text-sm">
           <thead className="border-b border-zinc-200 text-xs uppercase tracking-wide text-zinc-500 dark:border-zinc-800 dark:text-zinc-400">
             <tr>
-              <th className="px-4 py-3">Citizen ID</th>
-              <th className="px-4 py-3">Full name</th>
-              <th className="px-4 py-3">Gender</th>
-              <th className="px-4 py-3">Birth date</th>
+              <th className="px-4 py-3">
+                <button
+                  type="button"
+                  className="inline-flex items-center gap-2"
+                  disabled={isPending}
+                  onClick={() => setSort("cid")}
+                >
+                  Citizen ID
+                  <SortIcon column="cid" />
+                </button>
+              </th>
+              <th className="px-4 py-3">
+                <button
+                  type="button"
+                  className="inline-flex items-center gap-2"
+                  disabled={isPending}
+                  onClick={() => setSort("fullName")}
+                >
+                  Full name
+                  <SortIcon column="fullName" />
+                </button>
+              </th>
+              <th className="px-4 py-3">
+                <button
+                  type="button"
+                  className="inline-flex items-center gap-2"
+                  disabled={isPending}
+                  onClick={() => setSort("gender")}
+                >
+                  Gender
+                  <SortIcon column="gender" />
+                </button>
+              </th>
+              <th className="px-4 py-3">
+                <button
+                  type="button"
+                  className="inline-flex items-center gap-2"
+                  disabled={isPending}
+                  onClick={() => setSort("birthDate")}
+                >
+                  Birth date
+                  <SortIcon column="birthDate" />
+                </button>
+              </th>
               <th className="px-4 py-3 text-right">Actions</th>
             </tr>
           </thead>
@@ -460,6 +644,19 @@ export function PopulationTable({
         disabled={isPending}
         onCancel={closeDeleteDialog}
         onConfirm={confirmDeleteNow}
+      />
+
+      <AddPopulationDialog
+        open={addOpen}
+        disabled={isPending}
+        draft={draft}
+        onChangeDraft={setDraft}
+        onCancel={closeAddModal}
+        onSave={() => {
+          startTransition(async () => {
+            await saveDraftFromModal();
+          });
+        }}
       />
     </div>
   );

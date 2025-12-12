@@ -5,6 +5,7 @@ export const populationTable = sqliteTable("population", {
   fullName: text("full_name").notNull(),
   gender: text("gender", { enum: ["M", "F", "O"] }).notNull(),
   birthDate: integer("birth_date", { mode: "timestamp_ms" }).notNull(),
+  createdAt: integer("created_at", { mode: "timestamp_ms" }),
 });
 
 export const hospitalAdmissionHistoryTable = sqliteTable(

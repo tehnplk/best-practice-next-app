@@ -2,8 +2,18 @@ import { Suspense } from "react";
 import { PopulationTable } from "./table";
 import { getPopulationPage } from "./actions";
 
-async function PopulationTableLoader({ page, pageSize }: { page: number; pageSize: number }) {
-  const data = await getPopulationPage({ page, pageSize });
+async function PopulationTableLoader({
+  page,
+  pageSize,
+  sortBy,
+  sortDir,
+}: {
+  page: number;
+  pageSize: number;
+  sortBy?: string;
+  sortDir?: string;
+}) {
+  const data = await getPopulationPage({ page, pageSize, sortBy, sortDir });
 
   return (
     <PopulationTable
@@ -14,16 +24,20 @@ async function PopulationTableLoader({ page, pageSize }: { page: number; pageSiz
       initialTotal={data.total}
       pageSize={data.pageSize}
       pageSizeOptions={data.pageSizeOptions}
+      sortBy={data.sortBy}
+      sortDir={data.sortDir}
     />
   );
 }
 
 export default async function PopulationPage(props: {
-  searchParams: Promise<{ page?: string; pageSize?: string }>;
+  searchParams: Promise<{ page?: string; pageSize?: string; sortBy?: string; sortDir?: string }>;
 }) {
   const searchParams = await props.searchParams;
   const page = Math.max(1, Number(searchParams?.page ?? "1") || 1);
   const pageSize = Math.max(5, Math.min(100, Number(searchParams?.pageSize ?? "0") || 15));
+  const sortBy = searchParams?.sortBy;
+  const sortDir = searchParams?.sortDir;
   return (
     <div className="min-h-screen bg-zinc-50 px-6 py-10 text-zinc-950 dark:bg-black dark:text-zinc-50">
       <div className="mx-auto w-full max-w-5xl">
@@ -41,7 +55,7 @@ export default async function PopulationPage(props: {
             </div>
           }
         >
-          <PopulationTableLoader page={page} pageSize={pageSize} />
+          <PopulationTableLoader page={page} pageSize={pageSize} sortBy={sortBy} sortDir={sortDir} />
         </Suspense>
       </div>
     </div>

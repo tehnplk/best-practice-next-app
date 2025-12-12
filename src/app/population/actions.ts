@@ -40,6 +40,7 @@ export async function upsertPopulation(input: unknown) {
       fullName: data.fullName,
       gender: data.gender,
       birthDate,
+      createdAt: new Date(),
     })
     .onConflictDoUpdate({
       target: populationTable.cid,
@@ -66,10 +67,14 @@ export async function deletePopulation(input: unknown) {
 const GetPopulationPageSchema = z.object({
   page: z.number().int().min(1),
   pageSize: z.number().int().min(5).max(100).optional(),
+  sortBy: z
+    .enum(["createdAt", "cid", "fullName", "gender", "birthDate"])
+    .optional(),
+  sortDir: z.enum(["asc", "desc"]).optional(),
 });
 
 export async function getPopulationPage(input: unknown) {
-  const { page, pageSize } = GetPopulationPageSchema.parse(input);
+  const { page, pageSize, sortBy, sortDir } = GetPopulationPageSchema.parse(input);
   const size = pageSize ?? DEFAULT_PAGE_SIZE;
 
   const [{ value: totalCount }] = await db.select({ value: count() }).from(populationTable);
@@ -79,10 +84,24 @@ export async function getPopulationPage(input: unknown) {
   const safePage = Math.min(page, totalPages);
   const offset = (safePage - 1) * size;
 
+  const direction = sortDir ?? "desc";
+  const order = (col: any) => (direction === "asc" ? col : desc(col));
+
+  const sortColumn =
+    sortBy === "cid"
+      ? populationTable.cid
+      : sortBy === "fullName"
+        ? populationTable.fullName
+        : sortBy === "gender"
+          ? populationTable.gender
+          : sortBy === "birthDate"
+            ? populationTable.birthDate
+            : populationTable.createdAt;
+
   const rows = await db
     .select()
     .from(populationTable)
-    .orderBy(desc(populationTable.birthDate))
+    .orderBy(order(sortColumn))
     .limit(size + 1)
     .offset(offset);
 
@@ -94,6 +113,8 @@ export async function getPopulationPage(input: unknown) {
     total,
     totalPages,
     pageSizeOptions: PAGE_SIZE_OPTIONS,
+    sortBy: sortBy ?? "createdAt",
+    sortDir: direction,
   };
 }
 
