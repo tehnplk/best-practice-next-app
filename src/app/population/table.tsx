@@ -1,7 +1,7 @@
 "use client";
 
 import type { PopulationRow } from "@/db/schema";
-import { Check, Pencil, Trash2, X } from "lucide-react";
+import { AlertTriangle, Check, Pencil, Trash2, X } from "lucide-react";
 import { useMemo, useOptimistic, useState, useTransition } from "react";
 import toast from "react-hot-toast";
 import { deletePopulation, upsertPopulation } from "./actions";
@@ -39,6 +39,11 @@ export function PopulationTable({ initialRows }: { initialRows: PopulationRow[] 
   const initial = useMemo(() => initialRows.map(toEditable), [initialRows]);
   const [isPending, startTransition] = useTransition();
 
+  const [confirmDelete, setConfirmDelete] = useState<{
+    open: boolean;
+    citizenId: string;
+  }>({ open: false, citizenId: "" });
+
   const [optimisticRows, setOptimisticRows] = useOptimistic(
     initial,
     (state: EditableRow[], next: { type: "upsert" | "delete"; row?: EditableRow; citizenId?: string }) => {
@@ -66,6 +71,20 @@ export function PopulationTable({ initialRows }: { initialRows: PopulationRow[] 
         toast.error(e instanceof Error ? e.message : "Save failed");
       }
     });
+  }
+
+  function requestDelete(citizenId: string) {
+    setConfirmDelete({ open: true, citizenId });
+  }
+
+  function closeDeleteDialog() {
+    setConfirmDelete({ open: false, citizenId: "" });
+  }
+
+  function confirmDeleteNow() {
+    const citizenId = confirmDelete.citizenId;
+    closeDeleteDialog();
+    if (citizenId) requestAnimationFrame(() => onDelete(citizenId));
   }
 
   function onDelete(citizenId: string) {
@@ -151,7 +170,7 @@ export function PopulationTable({ initialRows }: { initialRows: PopulationRow[] 
                 row={row}
                 disabled={isPending}
                 onSave={onSave}
-                onDelete={onDelete}
+                onRequestDelete={requestDelete}
               />
             ))}
             {optimisticRows.length === 0 ? (
@@ -164,6 +183,14 @@ export function PopulationTable({ initialRows }: { initialRows: PopulationRow[] 
           </tbody>
         </table>
       </div>
+
+      <ConfirmDeleteDialog
+        open={confirmDelete.open}
+        citizenId={confirmDelete.citizenId}
+        disabled={isPending}
+        onCancel={closeDeleteDialog}
+        onConfirm={confirmDeleteNow}
+      />
     </div>
   );
 }
@@ -172,12 +199,12 @@ function Row({
   row,
   disabled,
   onSave,
-  onDelete,
+  onRequestDelete,
 }: {
   row: EditableRow;
   disabled: boolean;
   onSave: (row: EditableRow) => void;
-  onDelete: (citizenId: string) => void;
+  onRequestDelete: (citizenId: string) => void;
 }) {
   const [isEditing, setIsEditing] = useState(false);
   const [local, setLocal] = useState<EditableRow>(row);
@@ -288,7 +315,7 @@ function Row({
                 type="button"
                 aria-label="Delete"
                 disabled={disabled}
-                onClick={() => onDelete(row.citizenId)}
+                onClick={() => onRequestDelete(row.citizenId)}
               >
                 <Trash2 className="h-4 w-4" />
               </button>
@@ -297,5 +324,72 @@ function Row({
         </div>
       </td>
     </tr>
+  );
+}
+
+function ConfirmDeleteDialog({
+  open,
+  citizenId,
+  disabled,
+  onCancel,
+  onConfirm,
+}: {
+  open: boolean;
+  citizenId: string;
+  disabled: boolean;
+  onCancel: () => void;
+  onConfirm: () => void;
+}) {
+  if (!open) return null;
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Confirm delete"
+      onMouseDown={(e) => {
+        if (e.target === e.currentTarget) onCancel();
+      }}
+    >
+      <div className="w-full max-w-md rounded-2xl border border-zinc-200 bg-white p-5 shadow-xl dark:border-zinc-800 dark:bg-zinc-950">
+        <div className="flex items-start gap-3">
+          <div className="mt-0.5 inline-flex h-10 w-10 items-center justify-center rounded-full bg-red-50 text-red-600 dark:bg-red-950/40 dark:text-red-400">
+            <AlertTriangle className="h-5 w-5" />
+          </div>
+          <div className="min-w-0">
+            <h3 className="text-base font-semibold text-zinc-950 dark:text-zinc-50">
+              Confirm delete
+            </h3>
+            <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+              Delete citizenId <span className="font-mono">{citizenId}</span>? This action cannot be undone.
+            </p>
+          </div>
+        </div>
+
+        <div className="mt-5 flex justify-end gap-2">
+          <button
+            className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-zinc-200 px-4 text-sm font-medium text-zinc-900 disabled:opacity-50 dark:border-zinc-800 dark:text-zinc-50"
+            type="button"
+            aria-label="Cancel delete"
+            disabled={disabled}
+            onClick={onCancel}
+          >
+            <X className="h-4 w-4" />
+            Cancel
+          </button>
+          <button
+            className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-red-600 px-4 text-sm font-medium text-white disabled:opacity-50"
+            type="button"
+            aria-label="Confirm delete"
+            disabled={disabled}
+            onClick={onConfirm}
+          >
+            <Trash2 className="h-4 w-4" />
+            Delete
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }
