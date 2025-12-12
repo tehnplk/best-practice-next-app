@@ -2,7 +2,7 @@
 
 import { db } from "@/db";
 import { populationTable } from "@/db/schema";
-import { desc, eq } from "drizzle-orm";
+import { count, desc, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
@@ -70,6 +70,10 @@ export async function getPopulationPage(input: unknown) {
   const { page } = GetPopulationPageSchema.parse(input);
   const offset = (page - 1) * PAGE_SIZE;
 
+  const [{ value: totalCount }] = await db.select({ value: count() }).from(populationTable);
+  const total = Number(totalCount || 0);
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+
   const rows = await db
     .select()
     .from(populationTable)
@@ -82,5 +86,7 @@ export async function getPopulationPage(input: unknown) {
     hasMore: rows.length > PAGE_SIZE,
     page,
     pageSize: PAGE_SIZE,
+    total,
+    totalPages,
   };
 }

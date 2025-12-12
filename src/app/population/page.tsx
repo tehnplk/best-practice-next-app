@@ -1,28 +1,17 @@
-import { db } from "@/db";
-import { populationTable } from "@/db/schema";
-import { desc } from "drizzle-orm";
 import { Suspense } from "react";
 import { PopulationTable } from "./table";
-
-const PAGE_SIZE = 15;
+import { getPopulationPage } from "./actions";
 
 async function PopulationTableLoader({ page }: { page: number }) {
-  const offset = (page - 1) * PAGE_SIZE;
-  const rows = await db
-    .select()
-    .from(populationTable)
-    .orderBy(desc(populationTable.birthDate))
-    .limit(PAGE_SIZE + 1)
-    .offset(offset);
-
-  const hasMore = rows.length > PAGE_SIZE;
-  const pageRows = rows.slice(0, PAGE_SIZE);
+  const data = await getPopulationPage({ page });
 
   return (
     <PopulationTable
-      initialRows={pageRows}
-      initialPage={page}
-      initialHasMore={hasMore}
+      initialRows={data.rows}
+      initialPage={data.page}
+      initialTotalPages={data.totalPages}
+      initialTotal={data.total}
+      pageSize={data.pageSize}
     />
   );
 }

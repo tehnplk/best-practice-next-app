@@ -46,11 +46,15 @@ function mergeRowsByCitizenId(existing: EditableRow[], incoming: EditableRow[]) 
 export function PopulationTable({
   initialRows,
   initialPage,
-  initialHasMore,
+  initialTotalPages,
+  initialTotal,
+  pageSize,
 }: {
   initialRows: PopulationRow[];
   initialPage: number;
-  initialHasMore: boolean;
+  initialTotalPages: number;
+  initialTotal: number;
+  pageSize: number;
 }) {
   const router = useRouter();
 
@@ -58,7 +62,8 @@ export function PopulationTable({
   const [isPending, startTransition] = useTransition();
 
   const [page, setPage] = useState<number>(initialPage);
-  const [hasMore, setHasMore] = useState<boolean>(initialHasMore);
+  const [totalPages, setTotalPages] = useState<number>(initialTotalPages);
+  const [total, setTotal] = useState<number>(initialTotal);
   const [loadedRows, setLoadedRows] = useState<EditableRow[]>(initial);
 
   const [confirmDelete, setConfirmDelete] = useState<{
@@ -68,14 +73,21 @@ export function PopulationTable({
 
   const [optimisticRows, setOptimisticRows] = useOptimistic(
     loadedRows,
-    (state: EditableRow[], next: { type: "upsert" | "delete"; row?: EditableRow; citizenId?: string }) => {
+    (
+      state: EditableRow[],
+      next:
+        | { type: "upsert"; row: EditableRow }
+        | { type: "delete"; citizenId: string }
+        | { type: "reset"; rows: EditableRow[] }
+    ) => {
+      if (next.type === "reset") return next.rows;
       if (next.type === "delete" && next.citizenId) {
         return state.filter((r) => r.citizenId !== next.citizenId);
       }
-      if (next.type === "upsert" && next.row) {
-        const idx = state.findIndex((r) => r.citizenId === next.row!.citizenId);
-        if (idx === -1) return [next.row!, ...state];
-        return state.map((r) => (r.citizenId === next.row!.citizenId ? next.row! : r));
+      if (next.type === "upsert") {
+        const idx = state.findIndex((r) => r.citizenId === next.row.citizenId);
+        if (idx === -1) return [next.row, ...state];
+        return state.map((r) => (r.citizenId === next.row.citizenId ? next.row : r));
       }
       return state;
     }
@@ -123,22 +135,88 @@ export function PopulationTable({
     });
   }
 
-  function onLoadMore() {
+  function loadPage(targetPage: number) {
+    if (targetPage < 1 || targetPage > totalPages || targetPage === page) return;
     startTransition(async () => {
       try {
-        const nextPage = page + 1;
-        const res = await getPopulationPage({ page: nextPage });
+        const res = await getPopulationPage({ page: targetPage });
         const nextRows = res.rows.map(toEditable);
-
-        setLoadedRows((prev) => mergeRowsByCitizenId(prev, nextRows));
-        setPage(nextPage);
-        setHasMore(res.hasMore);
-
-        router.replace(`/population?page=${nextPage}`);
+        setLoadedRows(nextRows);
+        setOptimisticRows({ type: "reset", rows: nextRows });
+        setPage(res.page);
+        setTotalPages(res.totalPages);
+        setTotal(res.total);
+        router.replace(`/population?page=${res.page}`);
+        if (typeof window !== "undefined") window.scrollTo({ top: 0, behavior: "smooth" });
       } catch (e) {
-        toast.error(e instanceof Error ? e.message : "Load more failed");
+        toast.error(e instanceof Error ? e.message : "Load page failed");
       }
     });
+  }
+
+  function renderPagination() {
+    const items: (number | "ellipsis")[] = [];
+    const maxButtons = 5;
+    if (totalPages <= maxButtons) {
+      for (let i = 1; i <= totalPages; i++) items.push(i);
+    } else {
+      const first = 1;
+      const last = totalPages;
+      const start = Math.max(first + 1, page - 1);
+      const end = Math.min(last - 1, page + 1);
+      items.push(first);
+      if (start > first + 1) items.push("ellipsis");
+      for (let i = start; i <= end; i++) items.push(i);
+      if (end < last - 1) items.push("ellipsis");
+      items.push(last);
+    }
+
+    return (
+      <div className="flex items-center justify-between gap-3 border-t border-zinc-200 px-4 py-3 text-sm dark:border-zinc-800">
+        <div className="text-xs text-zinc-600 dark:text-zinc-400">
+          Page {page} of {totalPages} · {total} rows
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            className="inline-flex h-9 items-center rounded-md border border-zinc-200 bg-white px-2 text-sm font-medium text-zinc-900 disabled:opacity-50 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-50"
+            disabled={page <= 1 || isPending}
+            onClick={() => loadPage(page - 1)}
+          >
+            Prev
+          </button>
+          {items.map((it, idx) =>
+            it === "ellipsis" ? (
+              <span key={`e-${idx}`} className="px-1 text-zinc-500">
+                …
+              </span>
+            ) : (
+              <button
+                key={it}
+                type="button"
+                className={`inline-flex h-9 items-center rounded-md border px-3 text-sm font-medium ${
+                  it === page
+                    ? "border-zinc-900 bg-zinc-900 text-white dark:border-zinc-50 dark:bg-zinc-50 dark:text-zinc-950"
+                    : "border-zinc-200 bg-white text-zinc-900 hover:border-zinc-300 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-50"
+                }`}
+                disabled={isPending}
+                onClick={() => loadPage(it)}
+              >
+                {it}
+              </button>
+            )
+          )}
+          <button
+            type="button"
+            className="inline-flex h-9 items-center rounded-md border border-zinc-200 bg-white px-2 text-sm font-medium text-zinc-900 disabled:opacity-50 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-50"
+            disabled={page >= totalPages || isPending}
+            onClick={() => loadPage(page + 1)}
+          >
+            Next
+          </button>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -226,16 +304,7 @@ export function PopulationTable({
         </table>
       </div>
 
-      <div className="flex items-center justify-center border-t border-zinc-200 p-4 dark:border-zinc-800">
-        <button
-          className="inline-flex h-10 items-center justify-center rounded-md border border-zinc-200 bg-white px-4 text-sm font-medium text-zinc-900 disabled:opacity-50 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-50"
-          type="button"
-          disabled={!hasMore || isPending}
-          onClick={onLoadMore}
-        >
-          {hasMore ? (isPending ? "Loading..." : "Load more") : "No more"}
-        </button>
-      </div>
+      {renderPagination()}
 
       <ConfirmDeleteDialog
         open={confirmDelete.open}
