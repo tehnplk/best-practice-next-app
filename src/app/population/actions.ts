@@ -215,3 +215,13 @@ export async function createHospitalAdmission(input: unknown) {
     },
   };
 }
+
+const DeleteHospitalAdmissionSchema = z.object({
+  id: z.number().int().positive(),
+});
+
+export async function deleteHospitalAdmission(input: unknown) {
+  const { id } = DeleteHospitalAdmissionSchema.parse(input);
+  await db.delete(hospitalAdmissionHistoryTable).where(eq(hospitalAdmissionHistoryTable.id, id));
+  revalidatePath("/population");
+}

@@ -13,6 +13,7 @@ import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
 import {
   createHospitalAdmission,
+  deleteHospitalAdmission,
   deletePopulation,
   getHospitalAdmissionsByCid,
   searchHospitals,
@@ -90,6 +91,9 @@ export function PopulationTable({
   const [addAdmissionOpenByCid, setAddAdmissionOpenByCid] = useState<Record<string, boolean>>({});
   const [admissionDraftByCid, setAdmissionDraftByCid] = useState<Record<string, AdmissionDraft>>({});
   const [savingAdmissionCid, setSavingAdmissionCid] = useState<string | null>(null);
+  const [deletingAdmissionIdByCid, setDeletingAdmissionIdByCid] = useState<
+    Record<string, number | null>
+  >({});
 
   const [hospitalOptionsByCid, setHospitalOptionsByCid] = useState<
     Record<string, { id: number; name: string; city: string | null }[]>
@@ -246,6 +250,29 @@ export function PopulationTable({
       toast.error(e instanceof Error ? e.message : "Save failed");
     } finally {
       setSavingAdmissionCid((cur) => (cur === cid ? null : cur));
+    }
+  }
+
+  async function deleteAdmission(cid: string, admissionId: number) {
+    const prev = admissionsByCid[cid] ?? [];
+
+    setAdmissionsByCid((cur) => ({
+      ...cur,
+      [cid]: (cur[cid] ?? []).filter((a) => a.id !== admissionId),
+    }));
+
+    setDeletingAdmissionIdByCid((cur) => ({ ...cur, [cid]: admissionId }));
+
+    try {
+      await deleteHospitalAdmission({ id: admissionId });
+      toast.success("Admission deleted");
+    } catch (e) {
+      setAdmissionsByCid((cur) => ({ ...cur, [cid]: prev }));
+      toast.error(e instanceof Error ? e.message : "Delete admission failed");
+    } finally {
+      setDeletingAdmissionIdByCid((cur) =>
+        cur[cid] === admissionId ? { ...cur, [cid]: null } : cur
+      );
     }
   }
 
@@ -583,6 +610,12 @@ export function PopulationTable({
                     onSearchHospitals={(q) => searchHospitalOptions(row.cid, q)}
                     onSelectHospitalName={(name) => setHospitalNameDraft(row.cid, name)}
                     hospitalOptions={hospitalOptionsByCid[row.cid] ?? []}
+                    deletingAdmissionId={deletingAdmissionIdByCid[row.cid] ?? null}
+                    onDeleteAdmission={(admissionId: number) =>
+                      startTransition(async () => {
+                        await deleteAdmission(row.cid, admissionId);
+                      })
+                    }
                     onSave={(d) =>
                       startTransition(async () => {
                         await saveAdmission(row.cid, d);

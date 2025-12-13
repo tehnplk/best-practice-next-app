@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, MoreHorizontal, Plus, X } from "lucide-react";
+import { Check, MoreHorizontal, Plus, Trash2, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Modal } from "@/components/modal";
 import type { AdmissionDraft, AdmissionRow } from "./shared";
@@ -15,12 +15,14 @@ export function AdmissionHistoryPanelRow({
   admissions,
   draft,
   hospitalOptions,
+  deletingAdmissionId,
   onToggleAdd,
   onCloseAdd,
   onChangeDate,
   onChangeHospitalName,
   onSearchHospitals,
   onSelectHospitalName,
+  onDeleteAdmission,
   onSave,
   formatAdmissionDate,
 }: {
@@ -33,12 +35,14 @@ export function AdmissionHistoryPanelRow({
   admissions: AdmissionRow[];
   draft?: AdmissionDraft;
   hospitalOptions: { id: number; name: string; city: string | null }[];
+  deletingAdmissionId: number | null;
   onToggleAdd: () => void;
   onCloseAdd: () => void;
   onChangeDate: (value: string) => void;
   onChangeHospitalName: (value: string) => void;
   onSearchHospitals: (query: string) => void;
   onSelectHospitalName: (hospitalName: string) => void;
+  onDeleteAdmission: (admissionId: number) => void;
   onSave: (draft: AdmissionDraft) => void;
   formatAdmissionDate: (value: AdmissionRow["admissionDate"]) => string;
 }) {
@@ -141,7 +145,23 @@ export function AdmissionHistoryPanelRow({
                       <td className="px-3 py-2 font-mono text-xs text-muted-foreground">
                         {formatAdmissionDate(a.admissionDate)}
                       </td>
-                      <td className="px-3 py-2 text-foreground">{a.hospitalName}</td>
+                      <td className="px-3 py-2 text-foreground">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="min-w-0 truncate">{a.hospitalName}</span>
+                          <button
+                            type="button"
+                            className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-border bg-surface text-foreground hover:bg-surface-highlight disabled:opacity-50 transition-colors"
+                            aria-label="Delete admission"
+                            disabled={busy || deletingAdmissionId === a.id}
+                            onClick={() => {
+                              if (!window.confirm("Delete this admission history?")) return;
+                              onDeleteAdmission(a.id);
+                            }}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </div>
+                      </td>
                     </tr>
                   ))}
 
@@ -288,8 +308,8 @@ export function AdmissionHistoryPanelRow({
                                     aria-selected={idx === effectiveActiveHospitalIndex}
                                     className={`transition-colors ${
                                       idx === effectiveActiveHospitalIndex
-                                        ? "bg-surface-highlight"
-                                        : "hover:bg-surface-highlight"
+                                        ? "bg-yellow-200/90 ring-1 ring-yellow-400 dark:bg-yellow-500/25 dark:ring-yellow-500/40"
+                                        : "hover:bg-yellow-100/70 dark:hover:bg-yellow-500/10"
                                     }`}
                                   >
                                     <button
