@@ -6,20 +6,10 @@ import { and, asc, count, desc, eq, gte, like, lte, or } from "drizzle-orm";
 import type { SQLWrapper } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
+import { GenderSchema, UpsertPopulationSchema } from "./schemas";
 
 const DEFAULT_PAGE_SIZE = 15;
 const PAGE_SIZE_OPTIONS = [10, 15, 20, 50] as const;
-
-const GenderSchema = z.enum(["M", "F", "O"]);
-
-const UpsertPopulationSchema = z.object({
-  cid: z
-    .string()
-    .regex(/^\d{13}$/, "Citizen ID must be 13 digits"),
-  fullName: z.string().min(1),
-  gender: GenderSchema,
-  birthDate: z.string().min(1),
-});
 
 function parseDateString(input: string): Date {
   // Store dates as YYYY-MM-DD
@@ -35,7 +25,11 @@ function parseDateString(input: string): Date {
 }
 
 export async function upsertPopulation(input: unknown) {
-  const data = UpsertPopulationSchema.parse(input);
+  const parsed = UpsertPopulationSchema.safeParse(input);
+  if (!parsed.success) {
+    throw new Error(parsed.error.issues[0]?.message ?? "Invalid input");
+  }
+  const data = parsed.data;
   const birthDate = parseDateString(data.birthDate);
 
   await db

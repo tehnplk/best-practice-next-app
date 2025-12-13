@@ -29,10 +29,9 @@ import {
   type AdmissionDraft,
   type AdmissionRow,
   type EditableRow,
-  isNonEmpty,
-  isValidCitizenId,
   toEditable,
 } from "./_components/shared";
+import { UpsertPopulationSchema } from "./schemas";
 
 function emptyRow(): EditableRow {
   return {
@@ -417,24 +416,13 @@ export function PopulationTable({
   }
 
   async function saveDraftFromModal() {
-    const errors: string[] = [];
-
-    if (!isNonEmpty(draft.cid)) {
-      errors.push("Citizen ID is required");
-    } else if (!isValidCitizenId(draft.cid)) {
-      // FIX: Standardized error message to English
-      errors.push("Citizen ID must be 13 digits");
-    }
-
-    if (!isNonEmpty(draft.fullName)) {
-      errors.push("Full name is required");
-    }
-
-    if (!isNonEmpty(draft.birthDate)) {
-      errors.push("Birth date is required");
-    }
-
-    if (errors.length > 0) {
+    const parsed = UpsertPopulationSchema.safeParse(draft);
+    if (!parsed.success) {
+      const errors = Array.from(
+        new Map(
+          parsed.error.issues.map((issue) => [String(issue.path[0] ?? issue.message), issue.message])
+        ).values()
+      );
       toast.error(
         <div className="space-y-1">
           <div className="font-medium">Please fix the following:</div>
@@ -448,7 +436,7 @@ export function PopulationTable({
       return;
     }
 
-    const row = { ...draft };
+    const row = parsed.data;
     const prevLoaded = loadedRows;
     setOptimisticRows({ type: "upsert", row });
     try {

@@ -2,7 +2,9 @@
 
 import { Check, ChevronDown, ChevronRight, Pencil, Trash2, X } from "lucide-react";
 import { useState } from "react";
+import toast from "react-hot-toast";
 import type { EditableRow } from "./shared";
+import { UpsertPopulationSchema } from "../schemas";
 
 export function Row({
   row,
@@ -33,7 +35,12 @@ export function Row({
   }
 
   function onCommit() {
-    onSave(local);
+    const parsed = UpsertPopulationSchema.safeParse(local);
+    if (!parsed.success) {
+      toast.error(parsed.error.issues[0]?.message ?? "Invalid input");
+      return;
+    }
+    onSave(parsed.data);
     setIsEditing(false);
   }
 
