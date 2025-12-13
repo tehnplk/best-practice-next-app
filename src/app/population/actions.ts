@@ -2,7 +2,8 @@
 
 import { db } from "@/db";
 import { hospitalAdmissionHistoryTable, hospitalTable, populationTable } from "@/db/schema";
-import { asc, count, desc, eq, like } from "drizzle-orm";
+import { and, asc, count, desc, eq, gte, like, lte, or } from "drizzle-orm";
+import type { SQLWrapper } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
@@ -75,13 +76,47 @@ const GetPopulationPageSchema = z.object({
     .enum(["createdAt", "cid", "fullName", "gender", "birthDate"])
     .optional(),
   sortDir: z.enum(["asc", "desc"]).optional(),
+  q: z.string().optional(),
+  gender: GenderSchema.optional(),
+  birthFrom: z.string().optional(),
+  birthTo: z.string().optional(),
 });
 
 export async function getPopulationPage(input: unknown) {
-  const { page, pageSize, sortBy, sortDir } = GetPopulationPageSchema.parse(input);
+  const { page, pageSize, sortBy, sortDir, q, gender, birthFrom, birthTo } =
+    GetPopulationPageSchema.parse(input);
   const size = pageSize ?? DEFAULT_PAGE_SIZE;
 
-  const [{ value: totalCount }] = await db.select({ value: count() }).from(populationTable);
+  const query = q?.trim();
+  const birthFromDate = birthFrom?.trim() ? new Date(`${birthFrom.trim()}T00:00:00`) : undefined;
+  const birthToDate = birthTo?.trim() ? new Date(`${birthTo.trim()}T23:59:59.999`) : undefined;
+
+  const whereParts: SQLWrapper[] = [];
+
+  if (query) {
+    const qWhere = or(
+      like(populationTable.cid, `%${query}%`),
+      like(populationTable.fullName, `%${query}%`)
+    );
+    if (qWhere) whereParts.push(qWhere);
+  }
+
+  if (gender) {
+    whereParts.push(eq(populationTable.gender, gender));
+  }
+
+  if (birthFromDate && !Number.isNaN(birthFromDate.getTime())) {
+    whereParts.push(gte(populationTable.birthDate, birthFromDate));
+  }
+
+  if (birthToDate && !Number.isNaN(birthToDate.getTime())) {
+    whereParts.push(lte(populationTable.birthDate, birthToDate));
+  }
+
+  const where = whereParts.length > 0 ? and(...whereParts) : undefined;
+
+  const totalQuery = db.select({ value: count() }).from(populationTable);
+  const [{ value: totalCount }] = await (where ? totalQuery.where(where) : totalQuery);
   const total = Number(totalCount || 0);
   const totalPages = Math.max(1, Math.ceil(total / size));
 
@@ -103,12 +138,14 @@ export async function getPopulationPage(input: unknown) {
             ? populationTable.birthDate
             : populationTable.createdAt;
 
-  const rows = await db
+  const rowsQuery = db
     .select()
     .from(populationTable)
     .orderBy(order(sortColumn))
     .limit(size + 1)
     .offset(offset);
+
+  const rows = await (where ? rowsQuery.where(where) : rowsQuery);
 
   return {
     rows: rows.slice(0, size),

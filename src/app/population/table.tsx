@@ -59,6 +59,10 @@ export function PopulationTable({
   pageSizeOptions,
   sortBy,
   sortDir,
+  initialQ,
+  initialGender,
+  initialBirthFrom,
+  initialBirthTo,
 }: {
   initialRows: PopulationRow[];
   initialPage: number;
@@ -68,6 +72,10 @@ export function PopulationTable({
   pageSizeOptions: readonly number[];
   sortBy: "createdAt" | "cid" | "fullName" | "gender" | "birthDate";
   sortDir: "asc" | "desc";
+  initialQ: string;
+  initialGender: string;
+  initialBirthFrom: string;
+  initialBirthTo: string;
 }) {
   const router = useRouter();
 
@@ -79,6 +87,14 @@ export function PopulationTable({
   const total = initialTotal;
   const size = pageSize;
   const [loadedRows, setLoadedRows] = useState<EditableRow[]>(initial);
+
+  const [filterQ, setFilterQ] = useState<string>(initialQ);
+  const [filterGender, setFilterGender] = useState<"" | "M" | "F" | "O">(
+    initialGender === "M" || initialGender === "F" || initialGender === "O" ? initialGender : ""
+  );
+  const [filterBirthFrom, setFilterBirthFrom] = useState<string>(initialBirthFrom);
+  const [filterBirthTo, setFilterBirthTo] = useState<string>(initialBirthTo);
+  const filterDebounceRef = useRef<number | null>(null);
 
   const [currentSortBy, setCurrentSortBy] = useState<
     "createdAt" | "cid" | "fullName" | "gender" | "birthDate"
@@ -292,6 +308,55 @@ export function PopulationTable({
     });
   }
 
+  function buildSearchParams(params: {
+    page: number;
+    pageSize: number;
+    sortBy: typeof currentSortBy;
+    sortDir: typeof currentSortDir;
+    q: string;
+    gender: "" | "M" | "F" | "O";
+    birthFrom: string;
+    birthTo: string;
+  }) {
+    const search = new URLSearchParams();
+    search.set("page", String(params.page));
+    search.set("pageSize", String(params.pageSize));
+    search.set("sortBy", params.sortBy);
+    search.set("sortDir", params.sortDir);
+    const q = params.q.trim();
+    if (q) search.set("q", q);
+    if (params.gender) search.set("gender", params.gender);
+    if (params.birthFrom.trim()) search.set("birthFrom", params.birthFrom.trim());
+    if (params.birthTo.trim()) search.set("birthTo", params.birthTo.trim());
+    return search;
+  }
+
+  function applyFilters(next?: {
+    q?: string;
+    gender?: "" | "M" | "F" | "O";
+    birthFrom?: string;
+    birthTo?: string;
+  }) {
+    const q = next?.q ?? filterQ;
+    const gender = next?.gender ?? filterGender;
+    const birthFrom = next?.birthFrom ?? filterBirthFrom;
+    const birthTo = next?.birthTo ?? filterBirthTo;
+
+    startTransition(() => {
+      const search = buildSearchParams({
+        page: 1,
+        pageSize: size,
+        sortBy: currentSortBy,
+        sortDir: currentSortDir,
+        q,
+        gender,
+        birthFrom,
+        birthTo,
+      });
+      router.replace(`/population?${search.toString()}`);
+    });
+  }
+
   function closeAdmissionDeleteDialog() {
     setConfirmAdmissionDelete({ open: false, cid: "", admissionId: null, label: "" });
   }
@@ -428,11 +493,16 @@ export function PopulationTable({
     const nextSize = targetSize ?? size;
     const target = Math.max(1, targetPage);
     startTransition(() => {
-      const search = new URLSearchParams();
-      search.set("page", String(target));
-      search.set("pageSize", String(nextSize));
-      search.set("sortBy", currentSortBy);
-      search.set("sortDir", currentSortDir);
+      const search = buildSearchParams({
+        page: target,
+        pageSize: nextSize,
+        sortBy: currentSortBy,
+        sortDir: currentSortDir,
+        q: filterQ,
+        gender: filterGender,
+        birthFrom: filterBirthFrom,
+        birthTo: filterBirthTo,
+      });
       router.replace(`/population?${search.toString()}`);
     });
   }
@@ -443,11 +513,16 @@ export function PopulationTable({
     setCurrentSortDir(nextDir);
 
     startTransition(() => {
-      const search = new URLSearchParams();
-      search.set("page", "1");
-      search.set("pageSize", String(size));
-      search.set("sortBy", nextSortBy);
-      search.set("sortDir", nextDir);
+      const search = buildSearchParams({
+        page: 1,
+        pageSize: size,
+        sortBy: nextSortBy,
+        sortDir: nextDir,
+        q: filterQ,
+        gender: filterGender,
+        birthFrom: filterBirthFrom,
+        birthTo: filterBirthTo,
+      });
       router.replace(`/population?${search.toString()}`);
     });
   }
@@ -548,6 +623,104 @@ export function PopulationTable({
                 </select>
                 {renderPagination()}
             </div>
+        </div>
+
+        <div className="flex flex-wrap items-end gap-3">
+          <div className="min-w-[240px] flex-1">
+            <label className="text-xs font-medium text-muted-foreground" htmlFor="population-filter-q">
+              Search (CID / Full name)
+            </label>
+            <input
+              id="population-filter-q"
+              className="mt-1 h-9 w-full rounded-md border border-border bg-surface px-3 text-sm text-foreground outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
+              placeholder="Search..."
+              value={filterQ}
+              onChange={(e) => {
+                const next = e.target.value;
+                setFilterQ(next);
+                if (filterDebounceRef.current) window.clearTimeout(filterDebounceRef.current);
+                filterDebounceRef.current = window.setTimeout(() => {
+                  applyFilters({ q: next });
+                }, 300);
+              }}
+              onKeyDown={(e) => {
+                if (e.key !== "Enter") return;
+                if (filterDebounceRef.current) window.clearTimeout(filterDebounceRef.current);
+                applyFilters({ q: (e.currentTarget as HTMLInputElement).value });
+              }}
+            />
+          </div>
+
+          <div className="w-40">
+            <label className="text-xs font-medium text-muted-foreground" htmlFor="population-filter-gender">
+              Gender
+            </label>
+            <select
+              id="population-filter-gender"
+              className="mt-1 h-9 w-full rounded-md border border-border bg-surface px-2 text-sm text-foreground outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
+              value={filterGender}
+              onChange={(e) => {
+                const next = e.target.value as "" | "M" | "F" | "O";
+                setFilterGender(next);
+                applyFilters({ gender: next });
+              }}
+            >
+              <option value="">All</option>
+              <option value="M">M</option>
+              <option value="F">F</option>
+              <option value="O">O</option>
+            </select>
+          </div>
+
+          <div className="w-44">
+            <label className="text-xs font-medium text-muted-foreground" htmlFor="population-filter-birth-from">
+              Birth from
+            </label>
+            <input
+              id="population-filter-birth-from"
+              type="date"
+              className="mt-1 h-9 w-full rounded-md border border-border bg-surface px-2 text-sm text-foreground outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
+              value={filterBirthFrom}
+              onChange={(e) => {
+                const next = e.target.value;
+                setFilterBirthFrom(next);
+                applyFilters({ birthFrom: next });
+              }}
+            />
+          </div>
+
+          <div className="w-44">
+            <label className="text-xs font-medium text-muted-foreground" htmlFor="population-filter-birth-to">
+              Birth to
+            </label>
+            <input
+              id="population-filter-birth-to"
+              type="date"
+              className="mt-1 h-9 w-full rounded-md border border-border bg-surface px-2 text-sm text-foreground outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
+              value={filterBirthTo}
+              onChange={(e) => {
+                const next = e.target.value;
+                setFilterBirthTo(next);
+                applyFilters({ birthTo: next });
+              }}
+            />
+          </div>
+
+          <button
+            type="button"
+            className="inline-flex h-9 items-center justify-center rounded-md border border-border bg-surface px-3 text-sm text-foreground hover:bg-surface-highlight disabled:opacity-50 transition-colors"
+            disabled={isPending}
+            onClick={() => {
+              if (filterDebounceRef.current) window.clearTimeout(filterDebounceRef.current);
+              setFilterQ("");
+              setFilterGender("");
+              setFilterBirthFrom("");
+              setFilterBirthTo("");
+              applyFilters({ q: "", gender: "", birthFrom: "", birthTo: "" });
+            }}
+          >
+            Clear
+          </button>
         </div>
       </div>
 

@@ -15,17 +15,39 @@ async function PopulationTableLoader({
   pageSize,
   sortBy,
   sortDir,
+  q,
+  gender,
+  birthFrom,
+  birthTo,
 }: {
   page: number;
   pageSize: number;
   sortBy?: string;
   sortDir?: string;
+  q?: string;
+  gender?: string;
+  birthFrom?: string;
+  birthTo?: string;
 }) {
-  const data = await getPopulationPage({ page, pageSize, sortBy, sortDir });
+  const safeQ = q?.trim() ? q.trim() : undefined;
+  const safeGender = gender === "M" || gender === "F" || gender === "O" ? gender : undefined;
+  const safeBirthFrom = birthFrom?.trim() ? birthFrom.trim() : undefined;
+  const safeBirthTo = birthTo?.trim() ? birthTo.trim() : undefined;
+
+  const data = await getPopulationPage({
+    page,
+    pageSize,
+    sortBy,
+    sortDir,
+    q: safeQ,
+    gender: safeGender,
+    birthFrom: safeBirthFrom,
+    birthTo: safeBirthTo,
+  });
 
   return (
     <PopulationTable
-      key={`${data.page}-${data.pageSize}-${data.sortBy}-${data.sortDir}`}
+      key={`${data.page}-${data.pageSize}-${data.sortBy}-${data.sortDir}-${safeQ ?? ""}-${safeGender ?? ""}-${safeBirthFrom ?? ""}-${safeBirthTo ?? ""}`}
       initialRows={data.rows}
       initialPage={data.page}
       initialTotalPages={data.totalPages}
@@ -34,18 +56,35 @@ async function PopulationTableLoader({
       pageSizeOptions={data.pageSizeOptions}
       sortBy={data.sortBy}
       sortDir={data.sortDir}
+      initialQ={safeQ ?? ""}
+      initialGender={safeGender ?? ""}
+      initialBirthFrom={safeBirthFrom ?? ""}
+      initialBirthTo={safeBirthTo ?? ""}
     />
   );
 }
 
 export default async function PopulationPage(props: {
-  searchParams: Promise<{ page?: string; pageSize?: string; sortBy?: string; sortDir?: string }>;
+  searchParams: Promise<{
+    page?: string;
+    pageSize?: string;
+    sortBy?: string;
+    sortDir?: string;
+    q?: string;
+    gender?: string;
+    birthFrom?: string;
+    birthTo?: string;
+  }>;
 }) {
   const searchParams = await props.searchParams;
   const page = Math.max(1, Number(searchParams?.page ?? "1") || 1);
   const pageSize = Math.max(5, Math.min(100, Number(searchParams?.pageSize ?? "0") || 15));
   const sortBy = searchParams?.sortBy;
   const sortDir = searchParams?.sortDir;
+  const q = searchParams?.q;
+  const gender = searchParams?.gender;
+  const birthFrom = searchParams?.birthFrom;
+  const birthTo = searchParams?.birthTo;
   return (
     <div className="min-h-screen bg-background py-10 text-foreground">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
@@ -63,7 +102,16 @@ export default async function PopulationPage(props: {
             </div>
           }
         >
-          <PopulationTableLoader page={page} pageSize={pageSize} sortBy={sortBy} sortDir={sortDir} />
+          <PopulationTableLoader
+            page={page}
+            pageSize={pageSize}
+            sortBy={sortBy}
+            sortDir={sortDir}
+            q={q}
+            gender={gender}
+            birthFrom={birthFrom}
+            birthTo={birthTo}
+          />
         </Suspense>
       </div>
     </div>
