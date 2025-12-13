@@ -44,10 +44,17 @@ function emptyRow(): EditableRow {
 }
 
 function mergeRowsByCitizenId(existing: EditableRow[], incoming: EditableRow[]) {
-  const map = new Map<string, EditableRow>();
-  for (const r of existing) map.set(r.cid, r);
-  for (const r of incoming) map.set(r.cid, r);
-  return Array.from(map.values());
+  const existingCid = new Set(existing.map((r) => r.cid));
+  const incomingByCid = new Map<string, EditableRow>();
+  const newRows: EditableRow[] = [];
+
+  for (const r of incoming) {
+    incomingByCid.set(r.cid, r);
+    if (!existingCid.has(r.cid)) newRows.push(r);
+  }
+
+  const merged = existing.map((r) => incomingByCid.get(r.cid) ?? r);
+  return [...newRows, ...merged];
 }
 
 export function PopulationTable({
