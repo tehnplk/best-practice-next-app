@@ -191,6 +191,7 @@ export function AdmissionHistoryPanelRow({
                             ref={hospitalInputRef}
                             className="h-9 w-full rounded-md border border-border bg-surface px-2 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
                             placeholder="Hospital name"
+                            autoComplete="off"
                             value={draft?.hospitalName ?? ""}
                             onChange={(e) => onChangeHospitalName(e.target.value)}
                           />
@@ -259,6 +260,7 @@ export function AdmissionHistoryPanelRow({
                               ref={hospitalSearchInputRef}
                               className="h-10 w-full rounded-md border border-border bg-surface px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
                               placeholder={hospitalOptionsLoading ? "Searching..." : "Search hospital"}
+                              autoComplete="off"
                               value={hospitalQuery}
                               onChange={(e) => {
                                 const next = e.target.value;

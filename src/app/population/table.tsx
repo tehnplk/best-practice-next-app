@@ -88,13 +88,13 @@ export function PopulationTable({
   const size = pageSize;
   const [loadedRows, setLoadedRows] = useState<EditableRow[]>(initial);
 
-  const [filterQ, setFilterQ] = useState<string>(initialQ);
+  const [filterQDraft, setFilterQDraft] = useState<string>(initialQ);
+  const [filterQApplied, setFilterQApplied] = useState<string>(initialQ);
   const [filterGender, setFilterGender] = useState<"" | "M" | "F" | "O">(
     initialGender === "M" || initialGender === "F" || initialGender === "O" ? initialGender : ""
   );
   const [filterBirthFrom, setFilterBirthFrom] = useState<string>(initialBirthFrom);
   const [filterBirthTo, setFilterBirthTo] = useState<string>(initialBirthTo);
-  const filterDebounceRef = useRef<number | null>(null);
 
   const [currentSortBy, setCurrentSortBy] = useState<
     "createdAt" | "cid" | "fullName" | "gender" | "birthDate"
@@ -337,7 +337,7 @@ export function PopulationTable({
     birthFrom?: string;
     birthTo?: string;
   }) {
-    const q = next?.q ?? filterQ;
+    const q = next?.q ?? filterQApplied;
     const gender = next?.gender ?? filterGender;
     const birthFrom = next?.birthFrom ?? filterBirthFrom;
     const birthTo = next?.birthTo ?? filterBirthTo;
@@ -498,7 +498,7 @@ export function PopulationTable({
         pageSize: nextSize,
         sortBy: currentSortBy,
         sortDir: currentSortDir,
-        q: filterQ,
+        q: filterQApplied,
         gender: filterGender,
         birthFrom: filterBirthFrom,
         birthTo: filterBirthTo,
@@ -518,7 +518,7 @@ export function PopulationTable({
         pageSize: size,
         sortBy: nextSortBy,
         sortDir: nextDir,
-        q: filterQ,
+        q: filterQApplied,
         gender: filterGender,
         birthFrom: filterBirthFrom,
         birthTo: filterBirthTo,
@@ -633,20 +633,17 @@ export function PopulationTable({
             <input
               id="population-filter-q"
               className="mt-1 h-9 w-full rounded-md border border-border bg-surface px-3 text-sm text-foreground outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
-              placeholder="Search..."
-              value={filterQ}
+              placeholder="Search... (press Enter)"
+              autoComplete="off"
+              value={filterQDraft}
               onChange={(e) => {
-                const next = e.target.value;
-                setFilterQ(next);
-                if (filterDebounceRef.current) window.clearTimeout(filterDebounceRef.current);
-                filterDebounceRef.current = window.setTimeout(() => {
-                  applyFilters({ q: next });
-                }, 300);
+                setFilterQDraft(e.target.value);
               }}
               onKeyDown={(e) => {
                 if (e.key !== "Enter") return;
-                if (filterDebounceRef.current) window.clearTimeout(filterDebounceRef.current);
-                applyFilters({ q: (e.currentTarget as HTMLInputElement).value });
+                const next = (e.currentTarget as HTMLInputElement).value;
+                setFilterQApplied(next);
+                applyFilters({ q: next });
               }}
             />
           </div>
@@ -711,8 +708,8 @@ export function PopulationTable({
             className="inline-flex h-9 items-center justify-center rounded-md border border-border bg-surface px-3 text-sm text-foreground hover:bg-surface-highlight disabled:opacity-50 transition-colors"
             disabled={isPending}
             onClick={() => {
-              if (filterDebounceRef.current) window.clearTimeout(filterDebounceRef.current);
-              setFilterQ("");
+              setFilterQDraft("");
+              setFilterQApplied("");
               setFilterGender("");
               setFilterBirthFrom("");
               setFilterBirthTo("");
