@@ -1,8 +1,8 @@
 "use server";
 
 import { db } from "@/db";
-import { hospitalAdmissionHistoryTable, populationTable } from "@/db/schema";
-import { asc, count, desc, eq } from "drizzle-orm";
+import { hospitalAdmissionHistoryTable, hospitalTable, populationTable } from "@/db/schema";
+import { asc, count, desc, eq, like } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
@@ -120,6 +120,42 @@ export async function getPopulationPage(input: unknown) {
     pageSizeOptions: PAGE_SIZE_OPTIONS,
     sortBy: effectiveSortBy,
     sortDir: effectiveSortDir,
+  };
+}
+
+const SearchHospitalsSchema = z.object({
+  query: z.string().optional(),
+  limit: z.number().int().min(1).max(50).optional(),
+});
+
+export async function searchHospitals(input: unknown) {
+  const { query, limit } = SearchHospitalsSchema.parse(input);
+  const q = query?.trim();
+  const take = limit ?? 20;
+
+  if (q && q.length < 3) {
+    return {
+      rows: [],
+    };
+  }
+
+  const base = db
+    .select({
+      id: hospitalTable.id,
+      name: hospitalTable.name,
+      city: hospitalTable.city,
+    })
+    .from(hospitalTable);
+
+  const rows = await (q
+    ? base.where(like(hospitalTable.name, `%${q}%`))
+    : base
+  )
+    .orderBy(asc(hospitalTable.name))
+    .limit(take);
+
+  return {
+    rows,
   };
 }
 

@@ -1,6 +1,7 @@
 "use client";
 
 import { Check, Plus, X } from "lucide-react";
+import { useRef } from "react";
 import type { AdmissionDraft, AdmissionRow } from "./shared";
 
 export function AdmissionHistoryPanelRow({
@@ -8,9 +9,12 @@ export function AdmissionHistoryPanelRow({
   isPending,
   loading,
   saving,
+  hospitalOptionsLoading,
   addOpen,
   admissions,
   draft,
+  hospitalListId,
+  hospitalOptions,
   onToggleAdd,
   onCloseAdd,
   onChangeDate,
@@ -22,17 +26,23 @@ export function AdmissionHistoryPanelRow({
   isPending: boolean;
   loading: boolean;
   saving: boolean;
+  hospitalOptionsLoading: boolean;
   addOpen: boolean;
   admissions: AdmissionRow[];
   draft?: AdmissionDraft;
+  hospitalListId: string;
+  hospitalOptions: { id: number; name: string; city: string | null }[];
   onToggleAdd: () => void;
   onCloseAdd: () => void;
   onChangeDate: (value: string) => void;
   onChangeHospitalName: (value: string) => void;
-  onSave: () => void;
+  onSave: (draft: AdmissionDraft) => void;
   formatAdmissionDate: (value: AdmissionRow["admissionDate"]) => string;
 }) {
   const busy = isPending || loading || saving;
+
+  const dateInputRef = useRef<HTMLInputElement | null>(null);
+  const hospitalInputRef = useRef<HTMLInputElement | null>(null);
 
   return (
     <tr className="border-b border-border last:border-b-0 bg-surface-highlight/30">
@@ -88,6 +98,7 @@ export function AdmissionHistoryPanelRow({
                     <tr className="border-t border-zinc-200 dark:border-zinc-800">
                       <td className="px-3 py-2">
                         <input
+                          ref={dateInputRef}
                           className="h-9 w-full rounded-md border border-border bg-surface px-2 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
                           type="date"
                           value={draft?.admissionDate ?? ""}
@@ -97,17 +108,29 @@ export function AdmissionHistoryPanelRow({
                       <td className="px-3 py-2">
                         <div className="flex items-center gap-2">
                           <input
+                            ref={hospitalInputRef}
                             className="h-9 w-full rounded-md border border-border bg-surface px-2 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
-                            placeholder="Hospital name"
+                            placeholder={hospitalOptionsLoading ? "Loading hospitals..." : "Hospital name"}
+                            list={hospitalListId}
                             value={draft?.hospitalName ?? ""}
                             onChange={(e) => onChangeHospitalName(e.target.value)}
                           />
+                          <datalist id={hospitalListId}>
+                            {hospitalOptions.map((h) => (
+                              <option key={h.id} value={h.name} />
+                            ))}
+                          </datalist>
                           <button
                             type="button"
                             className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-border bg-surface text-foreground hover:bg-surface-highlight disabled:opacity-50 transition-colors"
                             disabled={busy}
                             aria-label="Save admission"
-                            onClick={onSave}
+                            onClick={() =>
+                              onSave({
+                                admissionDate: dateInputRef.current?.value ?? draft?.admissionDate ?? "",
+                                hospitalName: hospitalInputRef.current?.value ?? draft?.hospitalName ?? "",
+                              })
+                            }
                           >
                             <Check className="h-4 w-4" />
                           </button>

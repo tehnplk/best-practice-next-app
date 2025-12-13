@@ -15,6 +15,7 @@ import {
   createHospitalAdmission,
   deletePopulation,
   getHospitalAdmissionsByCid,
+  searchHospitals,
   upsertPopulation,
 } from "./actions";
 
@@ -90,6 +91,11 @@ export function PopulationTable({
   const [admissionDraftByCid, setAdmissionDraftByCid] = useState<Record<string, AdmissionDraft>>({});
   const [savingAdmissionCid, setSavingAdmissionCid] = useState<string | null>(null);
 
+  const [hospitalOptionsByCid, setHospitalOptionsByCid] = useState<
+    Record<string, { id: number; name: string; city: string | null }[]>
+  >({});
+  const [hospitalLoadingCid, setHospitalLoadingCid] = useState<string | null>(null);
+
   const [confirmDelete, setConfirmDelete] = useState<{
     open: boolean;
     cid: string;
@@ -135,10 +141,12 @@ export function PopulationTable({
   }
 
   function toggleAddAdmission(cid: string) {
-    setAddAdmissionOpenByCid((prev) => {
-      const next = !prev[cid];
-      return { ...prev, [cid]: next };
-    });
+    const nextOpen = !addAdmissionOpenByCid[cid];
+    setAddAdmissionOpenByCid((prev) => ({ ...prev, [cid]: nextOpen }));
+
+    if (nextOpen) {
+      setHospitalOptionsByCid((cur) => ({ ...cur, [cid]: [] }));
+    }
     setAdmissionDraftByCid((prev) =>
       prev[cid]
         ? prev
@@ -176,13 +184,33 @@ export function PopulationTable({
     }));
   }
 
-  async function saveAdmission(cid: string) {
-    const draft = admissionDraftByCid[cid];
-    if (!draft?.admissionDate) {
+  function searchHospitalOptions(cid: string, query: string) {
+    const q = query.trim();
+    if (q.length < 3) {
+      setHospitalOptionsByCid((cur) => ({ ...cur, [cid]: [] }));
+      setHospitalLoadingCid((cur) => (cur === cid ? null : cur));
+      return;
+    }
+    startTransition(async () => {
+      setHospitalLoadingCid(cid);
+      try {
+        const res = await searchHospitals({ query: q, limit: 20 });
+        setHospitalOptionsByCid((cur) => ({ ...cur, [cid]: res.rows }));
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : "Search hospitals failed");
+      } finally {
+        setHospitalLoadingCid((cur) => (cur === cid ? null : cur));
+      }
+    });
+  }
+
+  async function saveAdmission(cid: string, draft?: AdmissionDraft) {
+    const d = draft ?? admissionDraftByCid[cid];
+    if (!d?.admissionDate) {
       toast.error("Admission date is required");
       return;
     }
-    if (!draft?.hospitalName?.trim()) {
+    if (!d?.hospitalName?.trim()) {
       toast.error("Hospital name is required");
       return;
     }
@@ -191,8 +219,8 @@ export function PopulationTable({
     try {
       const res = await createHospitalAdmission({
         cid,
-        admissionDate: draft.admissionDate,
-        hospitalName: draft.hospitalName,
+        admissionDate: d.admissionDate,
+        hospitalName: d.hospitalName,
       });
 
       setAdmissionsByCid((prev) => {
@@ -537,16 +565,22 @@ export function PopulationTable({
                     isPending={isPending}
                     loading={loadingCid === row.cid}
                     saving={savingAdmissionCid === row.cid}
+                    hospitalOptionsLoading={hospitalLoadingCid === row.cid}
                     addOpen={!!addAdmissionOpenByCid[row.cid]}
                     admissions={admissionsByCid[row.cid] ?? []}
                     draft={admissionDraftByCid[row.cid]}
                     onToggleAdd={() => toggleAddAdmission(row.cid)}
                     onCloseAdd={() => closeAddAdmission(row.cid)}
                     onChangeDate={(v) => setAdmissionDateDraft(row.cid, v)}
-                    onChangeHospitalName={(v) => setHospitalNameDraft(row.cid, v)}
-                    onSave={() =>
+                    onChangeHospitalName={(v) => {
+                      setHospitalNameDraft(row.cid, v);
+                      searchHospitalOptions(row.cid, v);
+                    }}
+                    hospitalListId={`hospital-options-${row.cid}`}
+                    hospitalOptions={hospitalOptionsByCid[row.cid] ?? []}
+                    onSave={(d) =>
                       startTransition(async () => {
-                        await saveAdmission(row.cid);
+                        await saveAdmission(row.cid, d);
                       })
                     }
                     formatAdmissionDate={formatAdmissionDate}
