@@ -1,7 +1,7 @@
 "use client";
 
 import { Check, MoreHorizontal, Plus, X } from "lucide-react";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Modal } from "@/components/modal";
 import type { AdmissionDraft, AdmissionRow } from "./shared";
 
@@ -46,9 +46,54 @@ export function AdmissionHistoryPanelRow({
 
   const dateInputRef = useRef<HTMLInputElement | null>(null);
   const hospitalInputRef = useRef<HTMLInputElement | null>(null);
+  const hospitalSearchInputRef = useRef<HTMLInputElement | null>(null);
+  const hospitalOptionRefs = useRef<Array<HTMLDivElement | null>>([]);
 
   const [hospitalPickerOpen, setHospitalPickerOpen] = useState(false);
   const [hospitalQuery, setHospitalQuery] = useState("");
+  const [activeHospitalIndex, setActiveHospitalIndex] = useState(0);
+
+  const effectiveActiveHospitalIndex =
+    hospitalOptions.length === 0
+      ? 0
+      : Math.min(Math.max(activeHospitalIndex, 0), hospitalOptions.length - 1);
+
+  useEffect(() => {
+    if (!hospitalPickerOpen) return;
+    const t = window.setTimeout(() => {
+      hospitalSearchInputRef.current?.focus();
+      hospitalSearchInputRef.current?.select();
+    }, 0);
+    return () => window.clearTimeout(t);
+  }, [hospitalPickerOpen]);
+
+  useEffect(() => {
+    if (!hospitalPickerOpen) return;
+    if (hospitalOptions.length === 0) return;
+
+    const el = hospitalOptionRefs.current[effectiveActiveHospitalIndex];
+    if (!el) return;
+
+    const t = window.setTimeout(() => {
+      el.scrollIntoView({ block: "nearest" });
+    }, 0);
+
+    return () => window.clearTimeout(t);
+  }, [effectiveActiveHospitalIndex, hospitalOptions.length, hospitalPickerOpen]);
+
+  function closeHospitalPicker() {
+    setHospitalPickerOpen(false);
+    setHospitalQuery("");
+    setActiveHospitalIndex(0);
+    onSearchHospitals("");
+  }
+
+  function selectHospitalByIndex(idx: number) {
+    const h = hospitalOptions[idx];
+    if (!h) return;
+    onSelectHospitalName(h.name);
+    closeHospitalPicker();
+  }
 
   return (
     <tr className="border-b border-border last:border-b-0 bg-surface-highlight/30">
@@ -128,6 +173,7 @@ export function AdmissionHistoryPanelRow({
                             onClick={() => {
                               setHospitalPickerOpen(true);
                               setHospitalQuery("");
+                              setActiveHospitalIndex(0);
                               onSearchHospitals("");
                             }}
                           >
@@ -160,11 +206,7 @@ export function AdmissionHistoryPanelRow({
 
                         <Modal
                           open={hospitalPickerOpen}
-                          onClose={() => {
-                            setHospitalPickerOpen(false);
-                            setHospitalQuery("");
-                            onSearchHospitals("");
-                          }}
+                          onClose={closeHospitalPicker}
                           className="max-w-2xl"
                         >
                           <div className="flex items-start justify-between gap-3">
@@ -177,11 +219,7 @@ export function AdmissionHistoryPanelRow({
                               className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-border text-foreground hover:bg-surface-highlight disabled:opacity-50 transition-colors"
                               aria-label="Close"
                               disabled={busy}
-                              onClick={() => {
-                                setHospitalPickerOpen(false);
-                                setHospitalQuery("");
-                                onSearchHospitals("");
-                              }}
+                              onClick={closeHospitalPicker}
                             >
                               <X className="h-4 w-4" />
                             </button>
@@ -189,13 +227,43 @@ export function AdmissionHistoryPanelRow({
 
                           <div className="mt-4 space-y-3">
                             <input
+                              ref={hospitalSearchInputRef}
                               className="h-10 w-full rounded-md border border-border bg-surface px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
                               placeholder={hospitalOptionsLoading ? "Searching..." : "Search hospital"}
                               value={hospitalQuery}
                               onChange={(e) => {
                                 const next = e.target.value;
                                 setHospitalQuery(next);
+                                setActiveHospitalIndex(0);
                                 onSearchHospitals(next);
+                              }}
+                              onKeyDown={(e) => {
+                                if (e.key === "Escape") {
+                                  e.preventDefault();
+                                  closeHospitalPicker();
+                                  return;
+                                }
+
+                                if (hospitalOptions.length === 0) return;
+
+                                if (e.key === "ArrowDown") {
+                                  e.preventDefault();
+                                  setActiveHospitalIndex((cur) =>
+                                    Math.min(cur + 1, hospitalOptions.length - 1)
+                                  );
+                                  return;
+                                }
+
+                                if (e.key === "ArrowUp") {
+                                  e.preventDefault();
+                                  setActiveHospitalIndex((cur) => Math.max(cur - 1, 0));
+                                  return;
+                                }
+
+                                if (e.key === "Enter") {
+                                  e.preventDefault();
+                                  selectHospitalByIndex(effectiveActiveHospitalIndex);
+                                }
                               }}
                             />
 
@@ -206,24 +274,38 @@ export function AdmissionHistoryPanelRow({
                             ) : hospitalOptions.length === 0 ? (
                               <div className="text-sm text-muted">No hospitals found.</div>
                             ) : (
-                              <div className="max-h-72 overflow-auto rounded-md border border-border">
-                                {hospitalOptions.map((h) => (
-                                  <button
+                              <div
+                                className="max-h-72 overflow-auto rounded-md border border-border"
+                                role="listbox"
+                              >
+                                {hospitalOptions.map((h, idx) => (
+                                  <div
                                     key={h.id}
-                                    type="button"
-                                    className="flex w-full items-start justify-between gap-3 px-3 py-2 text-left text-sm text-foreground hover:bg-surface-highlight transition-colors"
-                                    onClick={() => {
-                                      onSelectHospitalName(h.name);
-                                      setHospitalPickerOpen(false);
-                                      setHospitalQuery("");
-                                      onSearchHospitals("");
+                                    ref={(el) => {
+                                      hospitalOptionRefs.current[idx] = el;
                                     }}
+                                    role="option"
+                                    aria-selected={idx === effectiveActiveHospitalIndex}
+                                    className={`transition-colors ${
+                                      idx === effectiveActiveHospitalIndex
+                                        ? "bg-surface-highlight"
+                                        : "hover:bg-surface-highlight"
+                                    }`}
                                   >
-                                    <span className="min-w-0 truncate">{h.name}</span>
-                                    {h.city ? (
-                                      <span className="shrink-0 text-xs text-muted">{h.city}</span>
-                                    ) : null}
-                                  </button>
+                                    <button
+                                      type="button"
+                                      className="flex w-full items-start justify-between gap-3 px-3 py-2 text-left text-sm text-foreground"
+                                      onClick={() => {
+                                        setActiveHospitalIndex(idx);
+                                        selectHospitalByIndex(idx);
+                                      }}
+                                    >
+                                      <span className="min-w-0 truncate">{h.name}</span>
+                                      {h.city ? (
+                                        <span className="shrink-0 text-xs text-muted">{h.city}</span>
+                                      ) : null}
+                                    </button>
+                                  </div>
                                 ))}
                               </div>
                             )}
