@@ -106,6 +106,13 @@ export function PopulationTable({
     cid: string;
   }>({ open: false, cid: "" });
 
+  const [confirmAdmissionDelete, setConfirmAdmissionDelete] = useState<{
+    open: boolean;
+    cid: string;
+    admissionId: number | null;
+    label: string;
+  }>({ open: false, cid: "", admissionId: null, label: "" });
+
   const [optimisticRows, setOptimisticRows] = useOptimistic(
     loadedRows,
     (
@@ -274,6 +281,19 @@ export function PopulationTable({
         cur[cid] === admissionId ? { ...cur, [cid]: null } : cur
       );
     }
+  }
+
+  function requestDeleteAdmission(cid: string, admissionId: number, label: string) {
+    setConfirmAdmissionDelete({
+      open: true,
+      cid,
+      admissionId,
+      label,
+    });
+  }
+
+  function closeAdmissionDeleteDialog() {
+    setConfirmAdmissionDelete({ open: false, cid: "", admissionId: null, label: "" });
   }
 
   function toggleExpand(cid: string) {
@@ -611,10 +631,8 @@ export function PopulationTable({
                     onSelectHospitalName={(name) => setHospitalNameDraft(row.cid, name)}
                     hospitalOptions={hospitalOptionsByCid[row.cid] ?? []}
                     deletingAdmissionId={deletingAdmissionIdByCid[row.cid] ?? null}
-                    onDeleteAdmission={(admissionId: number) =>
-                      startTransition(async () => {
-                        await deleteAdmission(row.cid, admissionId);
-                      })
+                    onRequestDeleteAdmission={(admissionId: number, label: string) =>
+                      requestDeleteAdmission(row.cid, admissionId, label)
                     }
                     onSave={(d) =>
                       startTransition(async () => {
@@ -643,6 +661,27 @@ export function PopulationTable({
         disabled={isPending}
         onCancel={closeDeleteDialog}
         onConfirm={confirmDeleteNow}
+      />
+
+      <ConfirmDeleteDialog
+        open={confirmAdmissionDelete.open}
+        cid={confirmAdmissionDelete.label}
+        disabled={
+          isPending ||
+          (confirmAdmissionDelete.cid
+            ? deletingAdmissionIdByCid[confirmAdmissionDelete.cid] != null
+            : false)
+        }
+        onCancel={closeAdmissionDeleteDialog}
+        onConfirm={() => {
+          const cid = confirmAdmissionDelete.cid;
+          const admissionId = confirmAdmissionDelete.admissionId;
+          if (!cid || !admissionId) return;
+          closeAdmissionDeleteDialog();
+          startTransition(async () => {
+            await deleteAdmission(cid, admissionId);
+          });
+        }}
       />
 
       <AddPopulationDialog

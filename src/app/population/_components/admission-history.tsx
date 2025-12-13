@@ -22,7 +22,7 @@ export function AdmissionHistoryPanelRow({
   onChangeHospitalName,
   onSearchHospitals,
   onSelectHospitalName,
-  onDeleteAdmission,
+  onRequestDeleteAdmission,
   onSave,
   formatAdmissionDate,
 }: {
@@ -42,7 +42,7 @@ export function AdmissionHistoryPanelRow({
   onChangeHospitalName: (value: string) => void;
   onSearchHospitals: (query: string) => void;
   onSelectHospitalName: (hospitalName: string) => void;
-  onDeleteAdmission: (admissionId: number) => void;
+  onRequestDeleteAdmission: (admissionId: number, label: string) => void;
   onSave: (draft: AdmissionDraft) => void;
   formatAdmissionDate: (value: AdmissionRow["admissionDate"]) => string;
 }) {
@@ -105,19 +105,7 @@ export function AdmissionHistoryPanelRow({
         <div className="rounded-lg border border-border bg-surface p-3 text-sm">
           <div className="mb-3 flex items-center justify-between">
             <div className="text-sm font-medium text-foreground">Admission history</div>
-            {!addOpen ? (
-              <button
-                type="button"
-                className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-border bg-surface text-foreground hover:bg-surface-highlight disabled:opacity-50 transition-colors"
-                disabled={busy}
-                aria-label="Add admission"
-                onClick={onToggleAdd}
-              >
-                <Plus className="h-4 w-4" />
-              </button>
-            ) : (
-              <div />
-            )}
+            <div />
           </div>
 
           {loading ? (
@@ -154,8 +142,10 @@ export function AdmissionHistoryPanelRow({
                             aria-label="Delete admission"
                             disabled={busy || deletingAdmissionId === a.id}
                             onClick={() => {
-                              if (!window.confirm("Delete this admission history?")) return;
-                              onDeleteAdmission(a.id);
+                              onRequestDeleteAdmission(
+                                a.id,
+                                `${formatAdmissionDate(a.admissionDate)} — ${a.hospitalName}`
+                              );
                             }}
                           >
                             <Trash2 className="h-4 w-4" />
@@ -164,6 +154,25 @@ export function AdmissionHistoryPanelRow({
                       </td>
                     </tr>
                   ))}
+
+                  {!addOpen ? (
+                    <tr className="border-t border-zinc-200 dark:border-zinc-800">
+                      <td className="px-3 py-2" />
+                      <td className="px-3 py-2">
+                        <div className="flex items-center justify-end">
+                          <button
+                            type="button"
+                            className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-border bg-surface text-foreground hover:bg-surface-highlight disabled:opacity-50 transition-colors"
+                            disabled={busy}
+                            aria-label="Add admission"
+                            onClick={onToggleAdd}
+                          >
+                            <Plus className="h-4 w-4" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ) : null}
 
                   {addOpen ? (
                     <tr className="border-t border-zinc-200 dark:border-zinc-800">
