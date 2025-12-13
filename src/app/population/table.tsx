@@ -238,12 +238,16 @@ export function PopulationTable({
 
   function saveRow(row: EditableRow) {
     startTransition(async () => {
+      const prevLoaded = loadedRows;
       setOptimisticRows({ type: "upsert", row });
       try {
         await upsertPopulation(row);
-        setLoadedRows((prev) => mergeRowsByCitizenId(prev, [row]));
+        const nextLoaded = mergeRowsByCitizenId(prevLoaded, [row]);
+        setLoadedRows(nextLoaded);
+        setOptimisticRows({ type: "reset", rows: nextLoaded });
         toast.success("Saved");
       } catch (e) {
+        setOptimisticRows({ type: "reset", rows: prevLoaded });
         toast.error(e instanceof Error ? e.message : "Save failed");
       }
     });
@@ -291,14 +295,18 @@ export function PopulationTable({
     }
 
     const row = { ...draft };
+    const prevLoaded = loadedRows;
     setOptimisticRows({ type: "upsert", row });
     try {
       await upsertPopulation(row);
-      setLoadedRows((prev) => mergeRowsByCitizenId(prev, [row]));
+      const nextLoaded = mergeRowsByCitizenId(prevLoaded, [row]);
+      setLoadedRows(nextLoaded);
+      setOptimisticRows({ type: "reset", rows: nextLoaded });
       setDraft(emptyRow());
       toast.success("Saved");
       closeAddModal();
     } catch (e) {
+      setOptimisticRows({ type: "reset", rows: prevLoaded });
       toast.error(e instanceof Error ? e.message : "Save failed");
     }
   }
@@ -319,12 +327,16 @@ export function PopulationTable({
 
   function onDelete(citizenId: string) {
     startTransition(async () => {
+      const prevLoaded = loadedRows;
       setOptimisticRows({ type: "delete", cid: citizenId });
       try {
         await deletePopulation({ cid: citizenId });
-        setLoadedRows((prev) => prev.filter((r) => r.cid !== citizenId));
+        const nextLoaded = prevLoaded.filter((r) => r.cid !== citizenId);
+        setLoadedRows(nextLoaded);
+        setOptimisticRows({ type: "reset", rows: nextLoaded });
         toast.success("Deleted");
       } catch (e) {
+        setOptimisticRows({ type: "reset", rows: prevLoaded });
         toast.error(e instanceof Error ? e.message : "Delete failed");
       }
     });

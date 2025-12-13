@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
 
 interface ModalProps {
@@ -11,23 +11,15 @@ interface ModalProps {
 }
 
 export function Modal({ open, onClose, children, className = "max-w-2xl" }: ModalProps) {
-  const [mounted, setMounted] = useState(false);
-  const [shouldRender, setShouldRender] = useState(false);
+  const isClient = useSyncExternalStore(
+    () => () => {
+      // No-op subscribe
+    },
+    () => true,
+    () => false
+  );
 
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  useEffect(() => {
-    if (open) setShouldRender(true);
-  }, [open]);
-
-  const onAnimationEnd = () => {
-    if (!open) setShouldRender(false);
-  };
-
-  if (!mounted) return null;
-  if (!shouldRender) return null;
+  if (!isClient) return null;
 
   return createPortal(
     <div
@@ -36,6 +28,7 @@ export function Modal({ open, onClose, children, className = "max-w-2xl" }: Moda
       }`}
       role="dialog"
       aria-modal="true"
+      aria-hidden={!open}
       onMouseDown={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
@@ -44,9 +37,8 @@ export function Modal({ open, onClose, children, className = "max-w-2xl" }: Moda
         className={`w-full rounded-2xl border border-border bg-surface p-5 shadow-xl ${className} ${
           open ? "animate-in" : "animate-out"
         }`}
-        onAnimationEnd={onAnimationEnd}
       >
-        {children}
+        {open ? children : null}
       </div>
     </div>,
     document.body

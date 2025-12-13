@@ -156,7 +156,7 @@ function parseAdmissionDate(input: string): Date {
 
 export async function createHospitalAdmission(input: unknown) {
   const data = CreateHospitalAdmissionSchema.parse(input);
-  const admissionDate = parseDateString(data.admissionDate);
+  const admissionDate = parseAdmissionDate(data.admissionDate);
 
   const inserted = await db
     .insert(hospitalAdmissionHistoryTable)

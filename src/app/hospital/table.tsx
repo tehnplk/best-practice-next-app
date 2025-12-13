@@ -14,7 +14,7 @@ import {
   X,
   MoreHorizontal,
 } from "lucide-react";
-import { useOptimistic, useState, useTransition } from "react";
+import { useOptimistic, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
 import { deleteHospital, upsertHospital } from "./actions";
@@ -23,6 +23,7 @@ type EditableRow = {
   id?: number;
   name: string;
   city?: string | null;
+  clientId: string;
 };
 
 // Conver DB row to editable format
@@ -31,6 +32,7 @@ function toEditable(row: HospitalRow): EditableRow {
     id: row.id,
     name: row.name,
     city: row.city,
+    clientId: `db-${row.id}`,
   };
 }
 
@@ -188,6 +190,12 @@ export function HospitalTable({
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
 
+  const tmpIdRef = useRef(0);
+  function createClientId() {
+    tmpIdRef.current += 1;
+    return `tmp-${Date.now()}-${tmpIdRef.current}`;
+  }
+
   const [loadedRows, setLoadedRows] = useState<EditableRow[]>(initialRows.map(toEditable));
   const [optimisticRows, setOptimisticRows] = useOptimistic(
     loadedRows,
@@ -205,12 +213,17 @@ export function HospitalTable({
       }
       if (next.type === "upsert") {
         if (next.row.id) {
-          // Update
-          return state.map((r) => (r.id === next.row.id ? next.row : r));
-        } else {
-          // Insert
+          const idxById = state.findIndex((r) => r.id === next.row.id);
+          if (idxById !== -1) {
+            return state.map((r) => (r.id === next.row.id ? next.row : r));
+          }
+        }
+
+        const idxByClientId = state.findIndex((r) => r.clientId === next.row.clientId);
+        if (idxByClientId === -1) {
           return [next.row, ...state];
         }
+        return state.map((r) => (r.clientId === next.row.clientId ? next.row : r));
       }
       return state;
     }
@@ -222,7 +235,7 @@ export function HospitalTable({
 
   // Modal State
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [draft, setDraft] = useState<EditableRow>({ name: "" });
+  const [draft, setDraft] = useState<EditableRow>({ name: "", clientId: "draft" });
 
   const [deleteConfirm, setDeleteConfirm] = useState<{ open: boolean; id?: number; name: string }>({
     open: false,
@@ -231,7 +244,7 @@ export function HospitalTable({
 
   // Actions
   function openAdd() {
-    setDraft({ name: "" });
+    setDraft({ name: "", clientId: createClientId() });
     setDialogOpen(true);
   }
 
@@ -241,20 +254,24 @@ export function HospitalTable({
       return;
     }
     startTransition(async () => {
-        setOptimisticRows({ type: "upsert", row });
-        try {
-            await upsertHospital(row);
-            // Update loaded rows to keep them in sync
-            setLoadedRows(prev => {
-                if (row.id) {
-                    return prev.map(r => r.id === row.id ? row : r);
-                }
-                return prev;
-            });
-            toast.success("Saved");
-        } catch (e) {
-            toast.error("Save failed");
-        }
+      const prevLoaded = loadedRows;
+      setOptimisticRows({ type: "upsert", row });
+      try {
+        const saved = await upsertHospital({ id: row.id, name: row.name, city: row.city ?? undefined });
+        const nextRow: EditableRow = {
+          id: saved.id,
+          name: saved.name,
+          city: saved.city,
+          clientId: row.clientId,
+        };
+        const nextLoaded = prevLoaded.map((r) => (r.clientId === row.clientId ? nextRow : r));
+        setLoadedRows(nextLoaded);
+        setOptimisticRows({ type: "reset", rows: nextLoaded });
+        toast.success("Saved");
+      } catch (e) {
+        setOptimisticRows({ type: "reset", rows: prevLoaded });
+        toast.error(e instanceof Error ? e.message : "Save failed");
+      }
     });
   }
 
@@ -270,16 +287,31 @@ export function HospitalTable({
     }
 
     startTransition(async () => {
-      setOptimisticRows({ type: "upsert", row: draft });
+      const prevLoaded = loadedRows;
+      const clientId = draft.clientId && draft.clientId !== "draft" ? draft.clientId : createClientId();
+      const optimisticRow: EditableRow = {
+        id: undefined,
+        name: draft.name,
+        city: draft.city,
+        clientId,
+      };
+      setOptimisticRows({ type: "upsert", row: optimisticRow });
       try {
-        await upsertHospital(draft);
+        const saved = await upsertHospital({ name: optimisticRow.name, city: optimisticRow.city ?? undefined });
+        const nextRow: EditableRow = {
+          id: saved.id,
+          name: saved.name,
+          city: saved.city,
+          clientId,
+        };
+        const nextLoaded = [nextRow, ...prevLoaded];
+        setLoadedRows(nextLoaded);
+        setOptimisticRows({ type: "reset", rows: nextLoaded });
         setDialogOpen(false);
-        // We might want to reload the list here or append to loadedRows if we knew the ID,
-        // but since it's a new row, the revalidatePath in action will handle page refresh eventually.
-        // For optimistically showing it, `setOptimisticRows` does the job for UI.
         toast.success("Saved successfully");
       } catch (e) {
-        toast.error("Failed to save");
+        setOptimisticRows({ type: "reset", rows: prevLoaded });
+        toast.error(e instanceof Error ? e.message : "Failed to save");
       }
     });
   }
@@ -289,13 +321,17 @@ export function HospitalTable({
     if (!id) return;
 
     startTransition(async () => {
+      const prevLoaded = loadedRows;
       setOptimisticRows({ type: "delete", id });
       try {
         await deleteHospital({ id });
-        setLoadedRows(prev => prev.filter(r => r.id !== id));
+        const nextLoaded = prevLoaded.filter((r) => r.id !== id);
+        setLoadedRows(nextLoaded);
+        setOptimisticRows({ type: "reset", rows: nextLoaded });
         toast.success("Deleted successfully");
       } catch (e) {
-        toast.error("Failed to delete");
+        setOptimisticRows({ type: "reset", rows: prevLoaded });
+        toast.error(e instanceof Error ? e.message : "Failed to delete");
       } finally {
         setDeleteConfirm({ open: false, name: "" });
       }
@@ -449,7 +485,7 @@ export function HospitalTable({
             ) : (
                 optimisticRows.map((row) => (
                     <Row 
-                        key={row.id || Math.random()}
+                        key={row.id ? `id-${row.id}` : row.clientId}
                         row={row}
                         disabled={isPending}
                         onSave={saveRow}

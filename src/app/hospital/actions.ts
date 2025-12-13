@@ -18,23 +18,36 @@ const UpsertHospitalSchema = z.object({
 export async function upsertHospital(input: unknown) {
   const data = UpsertHospitalSchema.parse(input);
 
-  if (data.id) {
-    await db
-      .update(hospitalTable)
-      .set({
-        name: data.name,
-        city: data.city,
-      })
-      .where(eq(hospitalTable.id, data.id));
-  } else {
-    await db.insert(hospitalTable).values({
-      name: data.name,
-      city: data.city,
-      createdAt: new Date(),
-    });
+  const rows = data.id
+    ? await db
+        .update(hospitalTable)
+        .set({
+          name: data.name,
+          city: data.city,
+        })
+        .where(eq(hospitalTable.id, data.id))
+        .returning()
+    : await db
+        .insert(hospitalTable)
+        .values({
+          name: data.name,
+          city: data.city,
+          createdAt: new Date(),
+        })
+        .returning();
+
+  const row = rows[0];
+  if (!row) {
+    throw new Error("Save failed");
   }
 
   revalidatePath("/hospital");
+
+  return {
+    id: row.id,
+    name: row.name,
+    city: row.city,
+  };
 }
 
 const DeleteHospitalSchema = z.object({
@@ -65,8 +78,8 @@ export async function getHospitalPage(input: unknown) {
   const safePage = Math.min(page, totalPages);
   const offset = (safePage - 1) * size;
 
-  const effectiveSortBy = sortBy ?? "createdAt";
-  const effectiveSortDir = sortDir ?? "desc";
+  const effectiveSortBy: "createdAt" | "name" | "id" = sortBy ?? "createdAt";
+  const effectiveSortDir: "asc" | "desc" = sortDir ?? "desc";
   const order = (col: Parameters<typeof asc>[0]) =>
     effectiveSortDir === "asc" ? asc(col) : desc(col);
 

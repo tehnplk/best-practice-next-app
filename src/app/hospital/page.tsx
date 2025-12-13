@@ -30,8 +30,8 @@ async function HospitalTableLoader({
       initialTotal={data.total}
       pageSize={data.pageSize}
       pageSizeOptions={data.pageSizeOptions}
-      sortBy={data.sortBy as any}
-      sortDir={data.sortDir as any}
+      sortBy={data.sortBy}
+      sortDir={data.sortDir}
     />
   );
 }
