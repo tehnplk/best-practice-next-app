@@ -4,7 +4,6 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useState } from 'react';
 import { Menu, X, Home, LayoutDashboard, Users, Building2 } from 'lucide-react';
-import { authClient } from '@/lib/auth-client';
 
 const navItems = [
   { name: 'Home', href: '/', icon: Home },
@@ -16,7 +15,6 @@ const navItems = [
 export default function Navbar() {
   const pathname = usePathname();
   const [isOpen, setIsOpen] = useState(false);
-  const { data: session } = authClient.useSession();
 
   return (
     <nav className="fixed top-0 z-50 w-full border-b border-border bg-surface/80 backdrop-blur-xl transition-all duration-300">
@@ -55,25 +53,12 @@ export default function Navbar() {
                 );
               })}
               <div className="ml-4 flex items-center gap-2">
-                {!session ? (
-                  <Link
-                    href="/sign-in"
-                    className="rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
-                  >
-                    Sign in
-                  </Link>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={async () => {
-                      await authClient.signOut();
-                      window.location.href = "/sign-in";
-                    }}
-                    className="rounded-md bg-surface-highlight px-3 py-2 text-sm font-medium text-foreground hover:bg-surface"
-                  >
-                    Sign out
-                  </button>
-                )}
+                <Link
+                  href="/test-provider-id"
+                  className="rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+                >
+                  Login
+                </Link>
               </div>
             </div>
           </div>
@@ -117,26 +102,13 @@ export default function Navbar() {
               </Link>
             );
           })}
-          {!session ? (
-            <Link
-              href="/sign-in"
-              onClick={() => setIsOpen(false)}
-              className="block rounded-md px-3 py-2 text-base font-medium bg-primary text-primary-foreground"
-            >
-              Sign in
-            </Link>
-          ) : (
-            <button
-              type="button"
-              onClick={async () => {
-                await authClient.signOut();
-                window.location.href = "/sign-in";
-              }}
-              className="w-full text-left rounded-md px-3 py-2 text-base font-medium bg-surface-highlight text-foreground"
-            >
-              Sign out
-            </button>
-          )}
+          <Link
+            href="/test-provider-id"
+            onClick={() => setIsOpen(false)}
+            className="block rounded-md px-3 py-2 text-base font-medium bg-primary text-primary-foreground"
+          >
+            Login
+          </Link>
         </div>
       </div>
     </nav>
