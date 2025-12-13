@@ -1,7 +1,8 @@
 "use client";
 
-import { Check, Plus, X } from "lucide-react";
-import { useRef } from "react";
+import { Check, MoreHorizontal, Plus, X } from "lucide-react";
+import { useRef, useState } from "react";
+import { Modal } from "@/components/modal";
 import type { AdmissionDraft, AdmissionRow } from "./shared";
 
 export function AdmissionHistoryPanelRow({
@@ -13,12 +14,13 @@ export function AdmissionHistoryPanelRow({
   addOpen,
   admissions,
   draft,
-  hospitalListId,
   hospitalOptions,
   onToggleAdd,
   onCloseAdd,
   onChangeDate,
   onChangeHospitalName,
+  onSearchHospitals,
+  onSelectHospitalName,
   onSave,
   formatAdmissionDate,
 }: {
@@ -30,12 +32,13 @@ export function AdmissionHistoryPanelRow({
   addOpen: boolean;
   admissions: AdmissionRow[];
   draft?: AdmissionDraft;
-  hospitalListId: string;
   hospitalOptions: { id: number; name: string; city: string | null }[];
   onToggleAdd: () => void;
   onCloseAdd: () => void;
   onChangeDate: (value: string) => void;
   onChangeHospitalName: (value: string) => void;
+  onSearchHospitals: (query: string) => void;
+  onSelectHospitalName: (hospitalName: string) => void;
   onSave: (draft: AdmissionDraft) => void;
   formatAdmissionDate: (value: AdmissionRow["admissionDate"]) => string;
 }) {
@@ -43,6 +46,9 @@ export function AdmissionHistoryPanelRow({
 
   const dateInputRef = useRef<HTMLInputElement | null>(null);
   const hospitalInputRef = useRef<HTMLInputElement | null>(null);
+
+  const [hospitalPickerOpen, setHospitalPickerOpen] = useState(false);
+  const [hospitalQuery, setHospitalQuery] = useState("");
 
   return (
     <tr className="border-b border-border last:border-b-0 bg-surface-highlight/30">
@@ -110,16 +116,23 @@ export function AdmissionHistoryPanelRow({
                           <input
                             ref={hospitalInputRef}
                             className="h-9 w-full rounded-md border border-border bg-surface px-2 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
-                            placeholder={hospitalOptionsLoading ? "Loading hospitals..." : "Hospital name"}
-                            list={hospitalListId}
+                            placeholder="Hospital name"
                             value={draft?.hospitalName ?? ""}
                             onChange={(e) => onChangeHospitalName(e.target.value)}
                           />
-                          <datalist id={hospitalListId}>
-                            {hospitalOptions.map((h) => (
-                              <option key={h.id} value={h.name} />
-                            ))}
-                          </datalist>
+                          <button
+                            type="button"
+                            className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-border bg-surface text-foreground hover:bg-surface-highlight disabled:opacity-50 transition-colors"
+                            disabled={busy}
+                            aria-label="Pick hospital"
+                            onClick={() => {
+                              setHospitalPickerOpen(true);
+                              setHospitalQuery("");
+                              onSearchHospitals("");
+                            }}
+                          >
+                            <MoreHorizontal className="h-4 w-4" />
+                          </button>
                           <button
                             type="button"
                             className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-border bg-surface text-foreground hover:bg-surface-highlight disabled:opacity-50 transition-colors"
@@ -144,6 +157,78 @@ export function AdmissionHistoryPanelRow({
                             <X className="h-4 w-4" />
                           </button>
                         </div>
+
+                        <Modal
+                          open={hospitalPickerOpen}
+                          onClose={() => {
+                            setHospitalPickerOpen(false);
+                            setHospitalQuery("");
+                            onSearchHospitals("");
+                          }}
+                          className="max-w-2xl"
+                        >
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0">
+                              <h3 className="text-base font-semibold text-foreground">Select hospital</h3>
+                              <p className="mt-1 text-sm text-muted">Type 3+ characters to search.</p>
+                            </div>
+                            <button
+                              type="button"
+                              className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-border text-foreground hover:bg-surface-highlight disabled:opacity-50 transition-colors"
+                              aria-label="Close"
+                              disabled={busy}
+                              onClick={() => {
+                                setHospitalPickerOpen(false);
+                                setHospitalQuery("");
+                                onSearchHospitals("");
+                              }}
+                            >
+                              <X className="h-4 w-4" />
+                            </button>
+                          </div>
+
+                          <div className="mt-4 space-y-3">
+                            <input
+                              className="h-10 w-full rounded-md border border-border bg-surface px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
+                              placeholder={hospitalOptionsLoading ? "Searching..." : "Search hospital"}
+                              value={hospitalQuery}
+                              onChange={(e) => {
+                                const next = e.target.value;
+                                setHospitalQuery(next);
+                                onSearchHospitals(next);
+                              }}
+                            />
+
+                            {hospitalQuery.trim().length < 3 ? (
+                              <div className="text-sm text-muted">Start typing to see results.</div>
+                            ) : hospitalOptionsLoading ? (
+                              <div className="text-sm text-muted">Loading...</div>
+                            ) : hospitalOptions.length === 0 ? (
+                              <div className="text-sm text-muted">No hospitals found.</div>
+                            ) : (
+                              <div className="max-h-72 overflow-auto rounded-md border border-border">
+                                {hospitalOptions.map((h) => (
+                                  <button
+                                    key={h.id}
+                                    type="button"
+                                    className="flex w-full items-start justify-between gap-3 px-3 py-2 text-left text-sm text-foreground hover:bg-surface-highlight transition-colors"
+                                    onClick={() => {
+                                      onSelectHospitalName(h.name);
+                                      setHospitalPickerOpen(false);
+                                      setHospitalQuery("");
+                                      onSearchHospitals("");
+                                    }}
+                                  >
+                                    <span className="min-w-0 truncate">{h.name}</span>
+                                    {h.city ? (
+                                      <span className="shrink-0 text-xs text-muted">{h.city}</span>
+                                    ) : null}
+                                  </button>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        </Modal>
                       </td>
                     </tr>
                   ) : null}

@@ -8,7 +8,7 @@ import {
   MoreHorizontal,
   Plus,
 } from "lucide-react";
-import { Fragment, useOptimistic, useState, useTransition } from "react";
+import { Fragment, useOptimistic, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
 import {
@@ -95,6 +95,7 @@ export function PopulationTable({
     Record<string, { id: number; name: string; city: string | null }[]>
   >({});
   const [hospitalLoadingCid, setHospitalLoadingCid] = useState<string | null>(null);
+  const hospitalSearchSeqRef = useRef<Record<string, number>>({});
 
   const [confirmDelete, setConfirmDelete] = useState<{
     open: boolean;
@@ -191,17 +192,23 @@ export function PopulationTable({
       setHospitalLoadingCid((cur) => (cur === cid ? null : cur));
       return;
     }
-    startTransition(async () => {
-      setHospitalLoadingCid(cid);
+
+    const nextSeq = (hospitalSearchSeqRef.current[cid] ?? 0) + 1;
+    hospitalSearchSeqRef.current[cid] = nextSeq;
+
+    setHospitalLoadingCid(cid);
+    (async () => {
       try {
         const res = await searchHospitals({ query: q, limit: 20 });
+        if (hospitalSearchSeqRef.current[cid] !== nextSeq) return;
         setHospitalOptionsByCid((cur) => ({ ...cur, [cid]: res.rows }));
       } catch (e) {
         toast.error(e instanceof Error ? e.message : "Search hospitals failed");
       } finally {
+        if (hospitalSearchSeqRef.current[cid] !== nextSeq) return;
         setHospitalLoadingCid((cur) => (cur === cid ? null : cur));
       }
-    });
+    })();
   }
 
   async function saveAdmission(cid: string, draft?: AdmissionDraft) {
@@ -572,11 +579,9 @@ export function PopulationTable({
                     onToggleAdd={() => toggleAddAdmission(row.cid)}
                     onCloseAdd={() => closeAddAdmission(row.cid)}
                     onChangeDate={(v) => setAdmissionDateDraft(row.cid, v)}
-                    onChangeHospitalName={(v) => {
-                      setHospitalNameDraft(row.cid, v);
-                      searchHospitalOptions(row.cid, v);
-                    }}
-                    hospitalListId={`hospital-options-${row.cid}`}
+                    onChangeHospitalName={(v) => setHospitalNameDraft(row.cid, v)}
+                    onSearchHospitals={(q) => searchHospitalOptions(row.cid, q)}
+                    onSelectHospitalName={(name) => setHospitalNameDraft(row.cid, name)}
                     hospitalOptions={hospitalOptionsByCid[row.cid] ?? []}
                     onSave={(d) =>
                       startTransition(async () => {
