@@ -23,6 +23,15 @@ type ProviderProfile = {
 const healthBaseUrl = "https://moph.id.th";
 const providerBaseUrl = "https://provider.id.th";
 
+async function readJsonOrText(response: Response): Promise<any> {
+  const text = await response.text();
+  try {
+    return JSON.parse(text);
+  } catch {
+    return { __rawText: text };
+  }
+}
+
 const betterAuthUrl = process.env.BETTER_AUTH_URL;
 
 if (!process.env.BETTER_AUTH_SECRET) {
@@ -79,6 +88,13 @@ export const auth = betterAuth({
   secret: process.env.BETTER_AUTH_SECRET,
   baseURL: betterAuthUrl,
   disabledPaths: ["/sign-up/email", "/sign-in/email"],
+  onAPIError: {
+    throw: false,
+    errorURL: "/sign-in",
+    onError: (error) => {
+      console.error("[BetterAuth] API error:", error);
+    },
+  },
   database: drizzleAdapter(db, {
     provider: "sqlite",
     schema,
@@ -201,7 +217,13 @@ export const auth = betterAuth({
               body,
             });
 
-            const json = (await response.json()) as any;
+            const json = await readJsonOrText(response);
+            if (json?.__rawText) {
+              throw new Error(
+                `Health ID token response is not JSON: ${String(json.__rawText).slice(0, 200)}`,
+              );
+            }
+
             if (!response.ok) {
               throw new Error(
                 json?.message ?? json?.error ?? "Health ID token request failed",
@@ -237,7 +259,13 @@ export const auth = betterAuth({
               },
             );
 
-            const tokenJson = (await tokenResponse.json()) as any;
+            const tokenJson = await readJsonOrText(tokenResponse);
+            if (tokenJson?.__rawText) {
+              throw new Error(
+                `Provider token response is not JSON: ${String(tokenJson.__rawText).slice(0, 200)}`,
+              );
+            }
+
             if (!tokenResponse.ok) {
               const message =
                 tokenJson?.message ??
@@ -268,6 +296,7 @@ export const auth = betterAuth({
               {
                 method: "GET",
                 headers: {
+                  "Content-Type": "application/json",
                   "client-id": process.env.PROVIDER_CLIENT_ID!,
                   "secret-key": process.env.PROVIDER_CLIENT_SECRET!,
                   Authorization: `Bearer ${providerAccessToken}`,
@@ -275,7 +304,12 @@ export const auth = betterAuth({
               },
             );
 
-            const profileJson = (await profileResponse.json()) as any;
+            const profileJson = await readJsonOrText(profileResponse);
+            if (profileJson?.__rawText) {
+              throw new Error(
+                `Provider profile response is not JSON: ${String(profileJson.__rawText).slice(0, 200)}`,
+              );
+            }
             if (!profileResponse.ok) {
               throw new Error(
                 profileJson?.message ??
