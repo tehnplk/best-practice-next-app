@@ -1,14 +1,18 @@
 "use client";
 
+import { Modal } from "@/components/modal";
+
 import type { HospitalRow } from "@/db/schema";
 import {
   ArrowDown,
   ArrowUp,
   ArrowUpDown,
+  Check,
   Pencil,
   Plus,
   Trash2,
   X,
+  MoreHorizontal,
 } from "lucide-react";
 import { useOptimistic, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
@@ -18,6 +22,7 @@ import { deleteHospital, upsertHospital } from "./actions";
 type EditableRow = {
   id?: number;
   name: string;
+  city?: string | null;
 };
 
 // Conver DB row to editable format
@@ -25,18 +30,18 @@ function toEditable(row: HospitalRow): EditableRow {
   return {
     id: row.id,
     name: row.name,
+    city: row.city,
   };
 }
 
-// Dialog for Adding or Editing
-function HospitalDialog({
+// Dialog for Adding Only
+function AddHospitalDialog({
   open,
   disabled,
   draft,
   onChangeDraft,
   onCancel,
   onSave,
-  mode
 }: {
   open: boolean;
   disabled: boolean;
@@ -44,24 +49,17 @@ function HospitalDialog({
   onChangeDraft: (next: EditableRow | ((prev: EditableRow) => EditableRow)) => void;
   onCancel: () => void;
   onSave: () => void;
-  mode: "add" | "edit";
 }) {
-  if (!open) return null;
-
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4"
-      role="dialog"
-      aria-modal="true"
-      onMouseDown={(e) => {
-        if (e.target === e.currentTarget) onCancel();
-      }}
+    <Modal
+      open={open}
+      onClose={onCancel}
+      className="max-w-md"
     >
-      <div className="w-full max-w-md rounded-2xl border border-border bg-surface p-5 shadow-xl">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <h3 className="text-base font-semibold text-foreground">
-              {mode === "add" ? "Add Hospital" : "Edit Hospital"}
+              Add Hospital
             </h3>
           </div>
           <button
@@ -87,6 +85,18 @@ function HospitalDialog({
               onChange={(e) => onChangeDraft((s) => ({ ...s, name: e.target.value }))}
             />
           </div>
+          <div className="space-y-1">
+            <label className="text-xs font-medium text-muted-foreground" htmlFor="hospital-city">
+              City
+            </label>
+            <input
+              id="hospital-city"
+              className="h-10 w-full rounded-md border border-border bg-surface px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
+              placeholder="e.g. Bangkok"
+              value={draft.city || ""}
+              onChange={(e) => onChangeDraft((s) => ({ ...s, city: e.target.value }))}
+            />
+          </div>
         </div>
 
         <div className="mt-5 flex justify-end gap-2">
@@ -107,8 +117,7 @@ function HospitalDialog({
             Save
           </button>
         </div>
-      </div>
-    </div>
+    </Modal>
   );
 }
 
@@ -126,18 +135,12 @@ function ConfirmDeleteDialog({
   onCancel: () => void;
   onConfirm: () => void;
 }) {
-  if (!open) return null;
-
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4"
-      role="dialog"
-      aria-modal="true"
-      onMouseDown={(e) => {
-        if (e.target === e.currentTarget) onCancel();
-      }}
+    <Modal
+      open={open}
+      onClose={onCancel}
+      className="max-w-sm"
     >
-      <div className="w-full max-w-sm rounded-2xl border border-border bg-surface p-5 shadow-xl">
         <h3 className="text-base font-semibold text-foreground">Confirm Delete</h3>
         <p className="mt-2 text-sm text-muted break-words">
           Are you sure you want to delete <strong>{name}</strong>? This action cannot be undone.
@@ -159,8 +162,7 @@ function ConfirmDeleteDialog({
             Delete
           </button>
         </div>
-      </div>
-    </div>
+    </Modal>
   );
 }
 
@@ -206,8 +208,7 @@ export function HospitalTable({
           // Update
           return state.map((r) => (r.id === next.row.id ? next.row : r));
         } else {
-          // Insert (Optimistic ID needed if we want to show it, but for list usually we append/prepend)
-          // For simplicity, we just fallback to revalidation result, but to show instant feedback we can prepend.
+          // Insert
           return [next.row, ...state];
         }
       }
@@ -221,7 +222,6 @@ export function HospitalTable({
 
   // Modal State
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [dialogMode, setDialogMode] = useState<"add" | "edit">("add");
   const [draft, setDraft] = useState<EditableRow>({ name: "" });
 
   const [deleteConfirm, setDeleteConfirm] = useState<{ open: boolean; id?: number; name: string }>({
@@ -232,14 +232,30 @@ export function HospitalTable({
   // Actions
   function openAdd() {
     setDraft({ name: "" });
-    setDialogMode("add");
     setDialogOpen(true);
   }
 
-  function openEdit(row: EditableRow) {
-    setDraft({ ...row });
-    setDialogMode("edit");
-    setDialogOpen(true);
+  function saveRow(row: EditableRow) {
+    if (!row.name.trim()) {
+      toast.error("Hospital name is required");
+      return;
+    }
+    startTransition(async () => {
+        setOptimisticRows({ type: "upsert", row });
+        try {
+            await upsertHospital(row);
+            // Update loaded rows to keep them in sync
+            setLoadedRows(prev => {
+                if (row.id) {
+                    return prev.map(r => r.id === row.id ? row : r);
+                }
+                return prev;
+            });
+            toast.success("Saved");
+        } catch (e) {
+            toast.error("Save failed");
+        }
+    });
   }
 
   function requestDelete(row: EditableRow) {
@@ -258,6 +274,9 @@ export function HospitalTable({
       try {
         await upsertHospital(draft);
         setDialogOpen(false);
+        // We might want to reload the list here or append to loadedRows if we knew the ID,
+        // but since it's a new row, the revalidatePath in action will handle page refresh eventually.
+        // For optimistically showing it, `setOptimisticRows` does the job for UI.
         toast.success("Saved successfully");
       } catch (e) {
         toast.error("Failed to save");
@@ -273,6 +292,7 @@ export function HospitalTable({
       setOptimisticRows({ type: "delete", id });
       try {
         await deleteHospital({ id });
+        setLoadedRows(prev => prev.filter(r => r.id !== id));
         toast.success("Deleted successfully");
       } catch (e) {
         toast.error("Failed to delete");
@@ -312,36 +332,58 @@ export function HospitalTable({
 
   // Pagination UI
   function renderPagination() {
-     // reuse simple logic
-     const items = [];
-     for(let i=1; i<=initialTotalPages; i++) items.push(i);
-     // Simplified for brevity, normally reuse complex logic
-     // Using a simplified max 5 buttons logic
-     let pagesToRender: (number | string)[] = items;
-     if(items.length > 7) {
-        // ... simple implementation ...
-        pagesToRender = [1, "...", initialPage - 1, initialPage, initialPage + 1, "...", initialTotalPages].filter((x, i, a) => {
-             if (typeof x === 'number') return x > 0 && x <= initialTotalPages;
-             return true;
-        });
-        // cleanup duplicates/invalid
-        pagesToRender = [...new Set(pagesToRender)];
-     }
+    const items: (number | "ellipsis")[] = [];
+    const maxButtons = 5;
+    if (initialTotalPages <= maxButtons) {
+      for (let i = 1; i <= initialTotalPages; i++) items.push(i);
+    } else {
+      const first = 1;
+      const last = initialTotalPages;
+      const start = Math.max(first + 1, initialPage - 1);
+      const end = Math.min(last - 1, initialPage + 1);
+      items.push(first);
+      if (start > first + 1) items.push("ellipsis");
+      for (let i = start; i <= end; i++) items.push(i);
+      if (end < last - 1) items.push("ellipsis");
+      items.push(last);
+    }
 
      return (
         <div className="flex items-center gap-2">
             <button 
                 disabled={initialPage <= 1 || isPending}
                 onClick={() => loadPage(initialPage - 1)}
-                className="inline-flex h-8 items-center justify-center rounded border border-border bg-surface px-3 text-sm disabled:opacity-50"
+                className="inline-flex h-8 items-center justify-center rounded border border-border bg-surface px-3 text-sm disabled:opacity-50 hover:bg-surface-highlight transition-colors"
+                title="Previous Page"
             >
                 Prev
             </button>
-            <span className="text-sm text-muted">Page {initialPage} of {initialTotalPages}</span>
+            {items.map((it, idx) =>
+                it === "ellipsis" ? (
+                  <span key={`e-${idx}`} className="px-1 text-muted flex items-center">
+                    <MoreHorizontal className="h-4 w-4" />
+                  </span>
+                ) : (
+                  <button
+                    key={it}
+                    type="button"
+                    className={`inline-flex h-8 w-8 items-center justify-center rounded border text-sm font-medium transition-colors ${
+                      it === initialPage
+                        ? "border-primary bg-primary text-primary-foreground shadow-sm"
+                        : "border-border bg-surface text-foreground hover:bg-surface-highlight"
+                    }`}
+                    disabled={isPending}
+                    onClick={() => loadPage(it)}
+                  >
+                    {it}
+                  </button>
+                )
+            )}
             <button 
                 disabled={initialPage >= initialTotalPages || isPending}
                 onClick={() => loadPage(initialPage + 1)}
-                className="inline-flex h-8 items-center justify-center rounded border border-border bg-surface px-3 text-sm disabled:opacity-50"
+                className="inline-flex h-8 items-center justify-center rounded border border-border bg-surface px-3 text-sm disabled:opacity-50 hover:bg-surface-highlight transition-colors"
+                 title="Next Page"
             >
                 Next
             </button>
@@ -406,26 +448,13 @@ export function HospitalTable({
                 <tr><td colSpan={3} className="px-4 py-8 text-center text-muted">No hospitals found.</td></tr>
             ) : (
                 optimisticRows.map((row) => (
-                    <tr key={row.id || Math.random()} className="hover:bg-surface-highlight/50">
-                        <td className="px-4 py-3 text-muted-foreground">{row.id}</td>
-                        <td className="px-4 py-3 font-medium text-foreground">{row.name}</td>
-                        <td className="px-4 py-3 flex justify-end gap-2">
-                             <button
-                                onClick={() => openEdit(row)}
-                                className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-border text-foreground hover:bg-surface-highlight hover:text-primary transition-colors"
-                                title="Edit"
-                             >
-                                <Pencil className="h-4 w-4" />
-                             </button>
-                             <button
-                                onClick={() => requestDelete(row)}
-                                className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-border text-foreground hover:bg-surface-highlight hover:text-red-600 transition-colors"
-                                title="Delete"
-                             >
-                                <Trash2 className="h-4 w-4" />
-                             </button>
-                        </td>
-                    </tr>
+                    <Row 
+                        key={row.id || Math.random()}
+                        row={row}
+                        disabled={isPending}
+                        onSave={saveRow}
+                        onRequestDelete={requestDelete}
+                    />
                 ))
             )}
           </tbody>
@@ -433,9 +462,8 @@ export function HospitalTable({
       </div>
 
       {/* Modals */}
-      <HospitalDialog 
+      <AddHospitalDialog 
         open={dialogOpen}
-        mode={dialogMode}
         draft={draft}
         disabled={isPending}
         onChangeDraft={setDraft}
@@ -451,5 +479,115 @@ export function HospitalTable({
         onConfirm={confirmDelete}
       />
     </div>
+  );
+}
+
+function Row({
+  row,
+  disabled,
+  onSave,
+  onRequestDelete,
+}: {
+  row: EditableRow; // Changed to EditableRow to match usage in main component
+  disabled: boolean;
+  onSave: (row: EditableRow) => void;
+  onRequestDelete: (row: EditableRow) => void;
+}) {
+  const [isEditing, setIsEditing] = useState(false);
+  const [local, setLocal] = useState<EditableRow>(row);
+
+  function onStartEdit() {
+    setLocal(row);
+    setIsEditing(true);
+  }
+
+  function onCancel() {
+    setLocal(row);
+    setIsEditing(false);
+  }
+
+  function onCommit() {
+    onSave(local);
+    setIsEditing(false);
+  }
+
+  return (
+    <tr className="hover:bg-surface-highlight/50 transition-colors">
+      <td className="px-4 py-3 text-muted-foreground">{row.id}</td>
+      <td className="px-4 py-3 font-medium text-foreground">
+        {isEditing ? (
+          <input
+            className="h-9 w-full rounded-md border border-border bg-surface px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
+            value={local.name}
+            onChange={(e) => setLocal((s) => ({ ...s, name: e.target.value }))}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") onCommit();
+              if (e.key === "Escape") onCancel();
+            }}
+            autoFocus
+          />
+        ) : (
+          row.name
+        )}
+      </td>
+      <td className="px-4 py-3 font-medium text-foreground">
+        {isEditing ? (
+          <input
+            type="text"
+            value={local.city || ""}
+            onChange={(e) => setLocal((s) => ({ ...s, city: e.target.value }))}
+            className="h-9 w-full rounded-md border border-border bg-surface px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
+            placeholder="City"
+            onKeyDown={(e) => {
+              if (e.key === "Enter") onCommit();
+              if (e.key === "Escape") onCancel();
+            }}
+          />
+        ) : (
+          row.city || <span className="text-muted-foreground italic">No city</span>
+        )}
+      </td>
+      <td className="px-4 py-3 flex justify-end gap-2">
+        {isEditing ? (
+          <>
+            <button
+              onClick={onCommit}
+              disabled={disabled}
+              className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-border text-foreground hover:bg-green-500/10 hover:text-green-600 hover:border-green-600 transition-colors"
+              title="Save"
+            >
+              <Check className="h-4 w-4" />
+            </button>
+            <button
+              onClick={onCancel}
+              disabled={disabled}
+              className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-border text-foreground hover:bg-surface-highlight transition-colors"
+              title="Cancel"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </>
+        ) : (
+          <>
+            <button
+              onClick={onStartEdit}
+              disabled={disabled}
+              className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-border text-foreground hover:bg-surface-highlight hover:text-primary transition-colors"
+              title="Edit"
+            >
+              <Pencil className="h-4 w-4" />
+            </button>
+            <button
+              onClick={() => onRequestDelete(row)}
+              disabled={disabled}
+              className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-border text-foreground hover:bg-surface-highlight hover:text-red-600 transition-colors"
+              title="Delete"
+            >
+              <Trash2 className="h-4 w-4" />
+            </button>
+          </>
+        )}
+      </td>
+    </tr>
   );
 }

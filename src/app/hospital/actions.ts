@@ -12,6 +12,7 @@ const PAGE_SIZE_OPTIONS = [10, 15, 20, 50] as const;
 const UpsertHospitalSchema = z.object({
   id: z.number().optional(),
   name: z.string().min(1, "Name is required"),
+  city: z.string().optional(),
 });
 
 export async function upsertHospital(input: unknown) {
@@ -22,11 +23,13 @@ export async function upsertHospital(input: unknown) {
       .update(hospitalTable)
       .set({
         name: data.name,
+        city: data.city,
       })
       .where(eq(hospitalTable.id, data.id));
   } else {
     await db.insert(hospitalTable).values({
       name: data.name,
+      city: data.city,
       createdAt: new Date(),
     });
   }

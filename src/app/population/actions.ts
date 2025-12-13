@@ -20,18 +20,22 @@ const UpsertPopulationSchema = z.object({
   birthDate: z.string().min(1),
 });
 
-function parseBirthDate(input: string): Date {
-  // Expecting yyyy-mm-dd
-  const d = new Date(input);
+function parseDateString(input: string): Date {
+  // Store dates as YYYY-MM-DD
+  // When parsing, treat the string as a "local" date part, but store as a Date object.
+  // Warning: new Date('yyyy-mm-dd') treats it as UTC.
+  // new Date('yyyy-mm-ddT00:00:00') treats it as Local.
+  // We'll stick to 'T00:00:00' to be safe for "start of day local time" or standard convention.
+  const d = new Date(`${input}T00:00:00`);
   if (Number.isNaN(d.getTime())) {
-    throw new Error("Invalid birthDate");
+    throw new Error("Invalid date format");
   }
   return d;
 }
 
 export async function upsertPopulation(input: unknown) {
   const data = UpsertPopulationSchema.parse(input);
-  const birthDate = parseBirthDate(data.birthDate);
+  const birthDate = parseDateString(data.birthDate);
 
   await db
     .insert(populationTable)
@@ -146,17 +150,13 @@ const CreateHospitalAdmissionSchema = z.object({
 });
 
 function parseAdmissionDate(input: string): Date {
-  // Expecting yyyy-mm-dd
-  const d = new Date(`${input}T00:00:00`);
-  if (Number.isNaN(d.getTime())) {
-    throw new Error("Invalid admissionDate");
-  }
-  return d;
+  // This function is no longer needed as we use parseDateString everywhere for consistency
+  return parseDateString(input);
 }
 
 export async function createHospitalAdmission(input: unknown) {
   const data = CreateHospitalAdmissionSchema.parse(input);
-  const admissionDate = parseAdmissionDate(data.admissionDate);
+  const admissionDate = parseDateString(data.admissionDate);
 
   const inserted = await db
     .insert(hospitalAdmissionHistoryTable)

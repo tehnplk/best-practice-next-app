@@ -26,6 +26,7 @@ export type HospitalAdmissionHistoryRow =
 export const hospitalTable = sqliteTable("hospital", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   name: text("name").notNull(),
+  city: text("city"),
   createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
 });
 
