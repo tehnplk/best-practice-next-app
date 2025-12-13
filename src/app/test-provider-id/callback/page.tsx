@@ -133,27 +133,7 @@ export default async function TestProviderIdCallbackPage({
   return (
     <main>
       <pre>
-{JSON.stringify(
-  {
-    code,
-    state,
-    all: params,
-    token: {
-      status: tokenStatus,
-      result: redact(tokenResult),
-    },
-    providerToken: {
-      status: providerTokenStatus,
-      result: redact(providerTokenResult),
-    },
-    profile: {
-      status: providerProfileStatus,
-      result: redact(providerProfileResult),
-    },
-  },
-  null,
-  2,
-)}
+{JSON.stringify(redact(providerProfileResult), null, 2)}
       </pre>
     </main>
   );
