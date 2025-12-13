@@ -1,0 +1,52 @@
+{
+    "account_id": "133478xxxx74075",
+    "hash_cid": "4e060f4f64085f66eea56aa85497849b16875d7f56a44af8c73f5a7523c3a0c3",
+    "provider_id": "0B3xxxxx5487",
+    "title_th": "นาย",
+    "special_title_th": "อื่นๆ",
+    "name_th": "อุเทน xxxxxx",
+    "name_eng": "Utehn xxxxxx",
+    "created_at": "2024-02-29T05:44:52.000Z",
+    "title_en": "Mr.",
+    "special_title_en": "Other",
+    "firstname_th": "อุเทน",
+    "lastname_th": "xxxxxx",
+    "firstname_en": "Utehn",
+    "lastname_en": "xxxxxx",
+    "email": "xxxxxx@gmail.com",
+    "date_of_birth": "1980-04-18",
+    "organization": [
+      {
+        "business_id": "435750xxxxx32484360",
+        "position": "นักวิชาการสาธารณสุข",
+        "position_id": "0011",
+        "affiliation": "นักวิชาการสาธารณสุข",
+        "license_id": null,
+        "hcode": "00051",
+        "code9": "000005100",
+        "hcode9": "AA0000051",
+        "level": "3",
+        "hname_th": "สำนักงานสาธารณสุขจังหวัดxxxxx",
+        "hname_eng": "Provincial Public Health Office",
+        "tax_id": "28855562xxxxx0792",
+        "license_expired_date": null,
+        "license_id_verify": false,
+        "expertise": null,
+        "expertise_id": null,
+        "moph_station_ref_code": null,
+        "is_private_provider": false,
+        "address": {
+          "address": null,
+          "moo": null,
+          "building": null,
+          "soi": null,
+          "street": null,
+          "province": "พิษณุโลก",
+          "district": "เมืองพิษณุโลก",
+          "sub_district": "ในเมือง",
+          "zip_code": "65000"
+        },
+        "position_type": "นักวิชาการสาธารณสุข"
+      }
+    ]
+}
