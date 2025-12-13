@@ -1,6 +1,14 @@
+import type { Metadata } from "next";
 import { Suspense } from "react";
 import { PopulationTable } from "./table";
 import { getPopulationPage } from "./actions";
+
+export const metadata: Metadata = {
+  title: "Population Registry | Best Practice Next App",
+  description:
+    "Manage citizen ID, full name, gender, and birth date with inline editing and optimistic UI updates.",
+  keywords: ["population", "registry", "citizen", "management"],
+};
 
 async function PopulationTableLoader({
   page,
