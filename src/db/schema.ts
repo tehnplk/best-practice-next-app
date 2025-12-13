@@ -22,3 +22,11 @@ export type PopulationRow = typeof populationTable.$inferSelect;
 
 export type HospitalAdmissionHistoryRow =
   typeof hospitalAdmissionHistoryTable.$inferSelect;
+
+export const hospitalTable = sqliteTable("hospital", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  name: text("name").notNull(),
+  createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
+});
+
+export type HospitalRow = typeof hospitalTable.$inferSelect;

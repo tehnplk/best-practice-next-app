@@ -16,8 +16,8 @@ export default function Error({
   }, [error]);
 
   return (
-    <div className="min-h-screen bg-zinc-50 px-6 py-10 text-zinc-950 dark:bg-black dark:text-zinc-50">
-      <div className="mx-auto w-full max-w-5xl">
+    <div className="min-h-screen bg-background py-10 text-foreground">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="rounded-xl border border-red-200 bg-red-50 p-8 dark:border-red-900 dark:bg-red-950/30">
           <div className="flex flex-col items-center gap-4 text-center">
             <div className="flex h-16 w-16 items-center justify-center rounded-full bg-red-100 dark:bg-red-900/50">

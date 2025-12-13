@@ -1,16 +1,14 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
-import { PopulationTable } from "./table";
-import { getPopulationPage } from "./actions";
+import { HospitalTable } from "./table";
+import { getHospitalPage } from "./actions";
 
 export const metadata: Metadata = {
-  title: "Population Registry | Best Practice Next App",
-  description:
-    "Manage citizen ID, full name, gender, and birth date with inline editing and optimistic UI updates.",
-  keywords: ["population", "registry", "citizen", "management"],
+  title: "Hospital Management",
+  description: "Manage hospital records.",
 };
 
-async function PopulationTableLoader({
+async function HospitalTableLoader({
   page,
   pageSize,
   sortBy,
@@ -21,10 +19,10 @@ async function PopulationTableLoader({
   sortBy?: string;
   sortDir?: string;
 }) {
-  const data = await getPopulationPage({ page, pageSize, sortBy, sortDir });
+  const data = await getHospitalPage({ page, pageSize, sortBy, sortDir });
 
   return (
-    <PopulationTable
+    <HospitalTable
       key={`${data.page}-${data.pageSize}-${data.sortBy}-${data.sortDir}`}
       initialRows={data.rows}
       initialPage={data.page}
@@ -32,13 +30,13 @@ async function PopulationTableLoader({
       initialTotal={data.total}
       pageSize={data.pageSize}
       pageSizeOptions={data.pageSizeOptions}
-      sortBy={data.sortBy}
-      sortDir={data.sortDir}
+      sortBy={data.sortBy as any}
+      sortDir={data.sortDir as any}
     />
   );
 }
 
-export default async function PopulationPage(props: {
+export default async function HospitalPage(props: {
   searchParams: Promise<{ page?: string; pageSize?: string; sortBy?: string; sortDir?: string }>;
 }) {
   const searchParams = await props.searchParams;
@@ -46,13 +44,14 @@ export default async function PopulationPage(props: {
   const pageSize = Math.max(5, Math.min(100, Number(searchParams?.pageSize ?? "0") || 15));
   const sortBy = searchParams?.sortBy;
   const sortDir = searchParams?.sortDir;
+
   return (
     <div className="min-h-screen bg-background py-10 text-foreground">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <header className="mb-8">
-          <h1 className="text-2xl font-semibold tracking-tight text-foreground">Population Registry</h1>
+          <h1 className="text-2xl font-semibold tracking-tight text-foreground">Hospital Management</h1>
           <p className="mt-2 text-sm text-muted">
-            Manage cid, full name, gender, and birth date. Inline edit with optimistic UI.
+            Manage hospital names and records.
           </p>
         </header>
 
@@ -63,7 +62,7 @@ export default async function PopulationPage(props: {
             </div>
           }
         >
-          <PopulationTableLoader page={page} pageSize={pageSize} sortBy={sortBy} sortDir={sortDir} />
+          <HospitalTableLoader page={page} pageSize={pageSize} sortBy={sortBy} sortDir={sortDir} />
         </Suspense>
       </div>
     </div>

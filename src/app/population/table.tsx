@@ -80,15 +80,15 @@ function AddPopulationDialog({
         if (e.target === e.currentTarget) onCancel();
       }}
     >
-      <div className="w-full max-w-2xl rounded-2xl border border-zinc-200 bg-white p-5 shadow-xl dark:border-zinc-800 dark:bg-zinc-950">
+      <div className="w-full max-w-2xl rounded-2xl border border-border bg-surface p-5 shadow-xl">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <h3 className="text-base font-semibold text-zinc-950 dark:text-zinc-50">Add / Save</h3>
-            <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">Create a new population record.</p>
+            <h3 className="text-base font-semibold text-foreground">Add / Save</h3>
+            <p className="mt-1 text-sm text-muted">Create a new population record.</p>
           </div>
           <button
             type="button"
-            className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-zinc-200 text-zinc-900 disabled:opacity-50 dark:border-zinc-800 dark:text-zinc-50"
+            className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-border text-foreground hover:bg-surface-highlight disabled:opacity-50 transition-colors"
             aria-label="Close"
             disabled={disabled}
             onClick={onCancel}
@@ -99,12 +99,12 @@ function AddPopulationDialog({
 
         <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
           <div className="space-y-1">
-            <label className="text-xs font-medium text-zinc-700 dark:text-zinc-300" htmlFor="add-cid">
+            <label className="text-xs font-medium text-muted-foreground" htmlFor="add-cid">
               CID (13 digits)
             </label>
             <input
               id="add-cid"
-              className="h-10 w-full rounded-md border border-zinc-200 bg-white px-3 text-sm outline-none focus:border-zinc-400 dark:border-zinc-800 dark:bg-zinc-950"
+              className="h-10 w-full rounded-md border border-border bg-surface px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
               placeholder="1234567890123"
               value={draft.cid}
               onChange={(e) => onChangeDraft((s) => ({ ...s, cid: e.target.value }))}
@@ -112,12 +112,12 @@ function AddPopulationDialog({
           </div>
 
           <div className="space-y-1">
-            <label className="text-xs font-medium text-zinc-700 dark:text-zinc-300" htmlFor="add-gender">
+            <label className="text-xs font-medium text-muted-foreground" htmlFor="add-gender">
               Gender
             </label>
             <select
               id="add-gender"
-              className="h-10 w-full rounded-md border border-zinc-200 bg-white px-3 text-sm outline-none focus:border-zinc-400 dark:border-zinc-800 dark:bg-zinc-950"
+              className="h-10 w-full rounded-md border border-border bg-surface px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
               value={draft.gender}
               onChange={(e) => onChangeDraft((s) => ({ ...s, gender: e.target.value as EditableRow["gender"] }))}
             >
@@ -128,12 +128,12 @@ function AddPopulationDialog({
           </div>
 
           <div className="space-y-1 md:col-span-2">
-            <label className="text-xs font-medium text-zinc-700 dark:text-zinc-300" htmlFor="add-fullname">
+            <label className="text-xs font-medium text-muted-foreground" htmlFor="add-fullname">
               Full name
             </label>
             <input
               id="add-fullname"
-              className="h-10 w-full rounded-md border border-zinc-200 bg-white px-3 text-sm outline-none focus:border-zinc-400 dark:border-zinc-800 dark:bg-zinc-950"
+              className="h-10 w-full rounded-md border border-border bg-surface px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
               placeholder="Full name"
               value={draft.fullName}
               onChange={(e) => onChangeDraft((s) => ({ ...s, fullName: e.target.value }))}
@@ -141,12 +141,12 @@ function AddPopulationDialog({
           </div>
 
           <div className="space-y-1">
-            <label className="text-xs font-medium text-zinc-700 dark:text-zinc-300" htmlFor="add-birthdate">
+            <label className="text-xs font-medium text-muted-foreground" htmlFor="add-birthdate">
               Birth date
             </label>
             <input
               id="add-birthdate"
-              className="h-10 w-full rounded-md border border-zinc-200 bg-white px-3 text-sm outline-none focus:border-zinc-400 dark:border-zinc-800 dark:bg-zinc-950"
+              className="h-10 w-full rounded-md border border-border bg-surface px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
               type="date"
               value={draft.birthDate}
               onChange={(e) => onChangeDraft((s) => ({ ...s, birthDate: e.target.value }))}
@@ -156,7 +156,7 @@ function AddPopulationDialog({
 
         <div className="mt-5 flex justify-end gap-2">
           <button
-            className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-zinc-200 px-4 text-sm font-medium text-zinc-900 disabled:opacity-50 dark:border-zinc-800 dark:text-zinc-50"
+            className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-border px-4 text-sm font-medium text-foreground hover:bg-surface-highlight disabled:opacity-50 transition-colors"
             type="button"
             aria-label="Cancel"
             disabled={disabled}
@@ -165,7 +165,7 @@ function AddPopulationDialog({
             Cancel
           </button>
           <button
-            className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-zinc-950 px-4 text-sm font-medium text-white disabled:opacity-50 dark:bg-zinc-50 dark:text-zinc-950"
+            className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 shadow-lg shadow-primary/20 transition-all"
             type="button"
             aria-label="Save"
             disabled={disabled}
@@ -541,13 +541,13 @@ export function PopulationTable({
 
     return (
       <div className="flex flex-wrap items-center gap-3 text-sm">
-        <div className="text-xs text-zinc-600 dark:text-zinc-400">
+        <div className="text-xs text-muted">
           Page {page} of {totalPages} · {total} rows · {size} per page
         </div>
         <div className="flex items-center gap-2">
           <button
             type="button"
-            className="inline-flex h-9 items-center rounded-md border border-zinc-200 bg-white px-2 text-sm font-medium text-zinc-900 disabled:opacity-50 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-50"
+            className="inline-flex h-9 items-center rounded-md border border-border bg-surface px-2 text-sm font-medium text-foreground hover:bg-surface-highlight disabled:opacity-50 transition-colors"
             disabled={page <= 1 || isPending}
             onClick={() => loadPage(page - 1)}
           >
@@ -555,17 +555,17 @@ export function PopulationTable({
           </button>
           {items.map((it, idx) =>
             it === "ellipsis" ? (
-              <span key={`e-${idx}`} className="px-1 text-zinc-500">
+              <span key={`e-${idx}`} className="px-1 text-muted">
                 …
               </span>
             ) : (
               <button
                 key={it}
                 type="button"
-                className={`inline-flex h-9 items-center rounded-md border px-3 text-sm font-medium ${
+                className={`inline-flex h-9 items-center rounded-md border px-3 text-sm font-medium transition-colors ${
                   it === page
-                    ? "border-zinc-900 bg-zinc-900 text-white dark:border-zinc-50 dark:bg-zinc-50 dark:text-zinc-950"
-                    : "border-zinc-200 bg-white text-zinc-900 hover:border-zinc-300 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-50"
+                    ? "border-primary bg-primary text-primary-foreground shadow-sm"
+                    : "border-border bg-surface text-foreground hover:bg-surface-highlight hover:border-muted"
                 }`}
                 disabled={isPending}
                 onClick={() => loadPage(it)}
@@ -576,7 +576,7 @@ export function PopulationTable({
           )}
           <button
             type="button"
-            className="inline-flex h-9 items-center rounded-md border border-zinc-200 bg-white px-2 text-sm font-medium text-zinc-900 disabled:opacity-50 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-50"
+            className="inline-flex h-9 items-center rounded-md border border-border bg-surface px-2 text-sm font-medium text-foreground hover:bg-surface-highlight disabled:opacity-50 transition-colors"
             disabled={page >= totalPages || isPending}
             onClick={() => loadPage(page + 1)}
           >
@@ -588,19 +588,19 @@ export function PopulationTable({
   }
 
   return (
-    <div className="rounded-xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950">
-      <div className="flex flex-col gap-3 border-b border-zinc-200 p-4 dark:border-zinc-800">
+    <div className="rounded-xl border border-border bg-surface shadow-sm">
+      <div className="flex flex-col gap-3 border-b border-border p-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="text-sm font-medium text-zinc-900 dark:text-zinc-100">Population</div>
+          <div className="text-sm font-medium text-foreground">Population</div>
           <div className="ml-auto flex items-center justify-end gap-4 text-sm">
             {renderPagination()}
             <div className="flex items-center gap-2">
-              <label htmlFor="page-size" className="whitespace-nowrap text-zinc-600 dark:text-zinc-400">
+              <label htmlFor="page-size" className="whitespace-nowrap text-muted">
                 Rows per page
               </label>
               <select
                 id="page-size"
-                className="h-9 rounded-md border border-zinc-200 bg-white px-2 text-sm outline-none focus:border-zinc-400 dark:border-zinc-800 dark:bg-zinc-950"
+                className="h-9 rounded-md border border-border bg-surface px-2 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
                 value={size}
                 disabled={isPending}
                 onChange={onChangePageSize}
@@ -616,13 +616,13 @@ export function PopulationTable({
         </div>
         <div className="mt-3 flex items-center justify-between">
           <button
-            className="h-10 rounded-md bg-zinc-950 px-4 text-sm font-medium text-white disabled:opacity-50 dark:bg-zinc-50 dark:text-zinc-950"
+            className="h-10 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 shadow-lg shadow-primary/20 transition-all"
             disabled={isPending}
             onClick={openAddModal}
           >
             Add / Save
           </button>
-          <div className="text-xs text-zinc-500 dark:text-zinc-400">
+          <div className="text-xs text-muted">
             {isPending ? "Saving..." : ""}
           </div>
         </div>
@@ -630,7 +630,7 @@ export function PopulationTable({
 
       <div className="overflow-x-auto">
         <table className="w-full text-left text-sm">
-          <thead className="border-b border-zinc-200 text-xs uppercase tracking-wide text-zinc-500 dark:border-zinc-800 dark:text-zinc-400">
+          <thead className="border-b border-border bg-surface-highlight/50 text-xs uppercase tracking-wide text-muted">
             <tr>
               <th className="px-4 py-3">
                 <button
@@ -715,7 +715,7 @@ export function PopulationTable({
             ))}
             {optimisticRows.length === 0 ? (
               <tr>
-                <td className="px-4 py-6 text-sm text-zinc-500 dark:text-zinc-400" colSpan={5}>
+                <td className="px-4 py-6 text-sm text-muted" colSpan={5}>
                   No records.
                 </td>
               </tr>
@@ -782,11 +782,11 @@ function Row({
   }
 
   return (
-    <tr className="border-b border-zinc-100 last:border-b-0 dark:border-zinc-900">
-      <td className="px-4 py-3 font-mono text-xs text-zinc-700 dark:text-zinc-300">
+    <tr className="border-b border-border last:border-b-0 hover:bg-surface-highlight/50 transition-colors">
+      <td className="px-4 py-3 font-mono text-xs text-muted-foreground">
         <button
           type="button"
-          className="inline-flex items-center gap-2 hover:underline"
+          className="inline-flex items-center gap-2 hover:underline text-primary"
           onClick={() => onToggleExpand(row.cid)}
           disabled={disabled}
           aria-label={expanded ? "Collapse" : "Expand"}
@@ -798,13 +798,13 @@ function Row({
       <td className="px-4 py-3">
         {isEditing ? (
           <input
-            className="h-9 w-full rounded-md border border-zinc-200 bg-white px-3 text-sm outline-none focus:border-zinc-400 dark:border-zinc-800 dark:bg-zinc-950"
+            className="h-9 w-full rounded-md border border-border bg-surface px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
             name={`fullName-${row.cid}`}
             value={local.fullName}
             onChange={(e) => setLocal((s) => ({ ...s, fullName: e.target.value }))}
           />
         ) : (
-          <div className="h-9 w-full rounded-md px-1.5 text-sm leading-9 text-zinc-900 dark:text-zinc-50">
+          <div className="h-9 w-full rounded-md px-1.5 text-sm leading-9 text-foreground">
             {row.fullName}
           </div>
         )}
@@ -812,7 +812,7 @@ function Row({
       <td className="px-4 py-3">
         {isEditing ? (
           <select
-            className="h-9 w-full rounded-md border border-zinc-200 bg-white px-3 text-sm outline-none focus:border-zinc-400 dark:border-zinc-800 dark:bg-zinc-950"
+            className="h-9 w-full rounded-md border border-border bg-surface px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
             name={`gender-${row.cid}`}
             value={local.gender}
             onChange={(e) => setLocal((s) => ({ ...s, gender: e.target.value as EditableRow["gender"] }))}
@@ -822,7 +822,7 @@ function Row({
             <option value="O">O</option>
           </select>
         ) : (
-          <div className="h-9 w-full rounded-md px-1.5 text-sm leading-9 text-zinc-900 dark:text-zinc-50">
+          <div className="h-9 w-full rounded-md px-1.5 text-sm leading-9 text-foreground">
             {row.gender}
           </div>
         )}
@@ -830,14 +830,14 @@ function Row({
       <td className="px-4 py-3">
         {isEditing ? (
           <input
-            className="h-9 w-full rounded-md border border-zinc-200 bg-white px-3 text-sm outline-none focus:border-zinc-400 dark:border-zinc-800 dark:bg-zinc-950"
+            className="h-9 w-full rounded-md border border-border bg-surface px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
             type="date"
             name={`birthDate-${row.cid}`}
             value={local.birthDate}
             onChange={(e) => setLocal((s) => ({ ...s, birthDate: e.target.value }))}
           />
         ) : (
-          <div className="h-9 w-full rounded-md px-1.5 text-sm leading-9 text-zinc-900 dark:text-zinc-50">
+          <div className="h-9 w-full rounded-md px-1.5 text-sm leading-9 text-foreground">
             {row.birthDate}
           </div>
         )}
@@ -879,7 +879,7 @@ function RowActionButtons({
       {isEditing ? (
         <>
           <button
-            className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-zinc-200 text-zinc-900 disabled:opacity-50 dark:border-zinc-800 dark:text-zinc-50"
+            className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-border text-foreground hover:bg-surface-highlight disabled:opacity-50 transition-colors"
             type="button"
             aria-label="Save"
             disabled={disabled}
@@ -888,7 +888,7 @@ function RowActionButtons({
             <Check className="h-4 w-4" />
           </button>
           <button
-            className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-zinc-200 text-zinc-900 disabled:opacity-50 dark:border-zinc-800 dark:text-zinc-50"
+            className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-border text-foreground hover:bg-surface-highlight disabled:opacity-50 transition-colors"
             type="button"
             aria-label="Cancel"
             disabled={disabled}
@@ -900,7 +900,7 @@ function RowActionButtons({
       ) : (
         <>
           <button
-            className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-zinc-200 text-zinc-900 disabled:opacity-50 dark:border-zinc-800 dark:text-zinc-50"
+            className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-border text-foreground hover:bg-surface-highlight disabled:opacity-50 transition-colors"
             type="button"
             aria-label="Edit"
             disabled={disabled}
@@ -955,15 +955,15 @@ function AdmissionHistoryPanelRow({
   const busy = isPending || loading || saving;
 
   return (
-    <tr className="border-b border-zinc-100 last:border-b-0 dark:border-zinc-900">
+    <tr className="border-b border-border last:border-b-0 bg-surface-highlight/30">
       <td className="px-4 py-3" colSpan={colSpan}>
-        <div className="rounded-lg border border-zinc-200 bg-zinc-50 p-3 text-sm dark:border-zinc-800 dark:bg-zinc-900/20">
+        <div className="rounded-lg border border-border bg-surface p-3 text-sm">
           <div className="mb-3 flex items-center justify-between">
-            <div className="text-sm font-medium text-zinc-900 dark:text-zinc-100">Admission history</div>
+            <div className="text-sm font-medium text-foreground">Admission history</div>
             {!addOpen ? (
               <button
                 type="button"
-                className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-zinc-200 bg-white text-zinc-900 disabled:opacity-50 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-50"
+                className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-border bg-surface text-foreground hover:bg-surface-highlight disabled:opacity-50 transition-colors"
                 disabled={busy}
                 aria-label="Add admission"
                 onClick={onToggleAdd}
@@ -976,11 +976,11 @@ function AdmissionHistoryPanelRow({
           </div>
 
           {loading ? (
-            <div className="text-zinc-600 dark:text-zinc-400">Loading admission history...</div>
+            <div className="text-muted">Loading admission history...</div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-left text-sm">
-                <thead className="border-b border-zinc-200 text-xs uppercase tracking-wide text-zinc-500 dark:border-zinc-800 dark:text-zinc-400">
+                <thead className="border-b border-border text-xs uppercase tracking-wide text-muted">
                   <tr>
                     <th className="px-3 py-2">Admission date</th>
                     <th className="px-3 py-2">Hospital</th>
@@ -996,11 +996,11 @@ function AdmissionHistoryPanelRow({
                   ) : null}
 
                   {admissions.map((a) => (
-                    <tr key={a.id} className="border-b border-zinc-100 last:border-b-0 dark:border-zinc-900">
-                      <td className="px-3 py-2 font-mono text-xs text-zinc-700 dark:text-zinc-300">
+                    <tr key={a.id} className="border-b border-border last:border-b-0">
+                      <td className="px-3 py-2 font-mono text-xs text-muted-foreground">
                         {formatAdmissionDate(a.admissionDate)}
                       </td>
-                      <td className="px-3 py-2 text-zinc-900 dark:text-zinc-50">{a.hospitalName}</td>
+                      <td className="px-3 py-2 text-foreground">{a.hospitalName}</td>
                     </tr>
                   ))}
 
@@ -1008,7 +1008,7 @@ function AdmissionHistoryPanelRow({
                     <tr className="border-t border-zinc-200 dark:border-zinc-800">
                       <td className="px-3 py-2">
                         <input
-                          className="h-9 w-full rounded-md border border-zinc-200 bg-white px-2 text-sm outline-none focus:border-zinc-400 dark:border-zinc-800 dark:bg-zinc-950"
+                          className="h-9 w-full rounded-md border border-border bg-surface px-2 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
                           type="date"
                           value={draft?.admissionDate ?? ""}
                           onChange={(e) => onChangeDate(e.target.value)}
@@ -1017,14 +1017,14 @@ function AdmissionHistoryPanelRow({
                       <td className="px-3 py-2">
                         <div className="flex items-center gap-2">
                           <input
-                            className="h-9 w-full rounded-md border border-zinc-200 bg-white px-2 text-sm outline-none focus:border-zinc-400 dark:border-zinc-800 dark:bg-zinc-950"
+                            className="h-9 w-full rounded-md border border-border bg-surface px-2 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
                             placeholder="Hospital name"
                             value={draft?.hospitalName ?? ""}
                             onChange={(e) => onChangeHospitalName(e.target.value)}
                           />
                           <button
                             type="button"
-                            className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-zinc-200 bg-white text-zinc-900 disabled:opacity-50 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-50"
+                            className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-border bg-surface text-foreground hover:bg-surface-highlight disabled:opacity-50 transition-colors"
                             disabled={busy}
                             aria-label="Save admission"
                             onClick={onSave}
@@ -1033,7 +1033,7 @@ function AdmissionHistoryPanelRow({
                           </button>
                           <button
                             type="button"
-                            className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-zinc-200 bg-white text-zinc-900 disabled:opacity-50 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-50"
+                            className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-border bg-surface text-foreground hover:bg-surface-highlight disabled:opacity-50 transition-colors"
                             disabled={busy}
                             aria-label="Cancel add admission"
                             onClick={onCloseAdd}
@@ -1079,16 +1079,16 @@ function ConfirmDeleteDialog({
         if (e.target === e.currentTarget) onCancel();
       }}
     >
-      <div className="w-full max-w-md rounded-2xl border border-zinc-200 bg-white p-5 shadow-xl dark:border-zinc-800 dark:bg-zinc-950">
+      <div className="w-full max-w-md rounded-2xl border border-border bg-surface p-5 shadow-xl">
         <div className="flex items-start gap-3">
           <div className="mt-0.5 inline-flex h-10 w-10 items-center justify-center rounded-full bg-red-50 text-red-600 dark:bg-red-950/40 dark:text-red-400">
             <AlertTriangle className="h-5 w-5" />
           </div>
           <div className="min-w-0">
-            <h3 className="text-base font-semibold text-zinc-950 dark:text-zinc-50">
+            <h3 className="text-base font-semibold text-foreground">
               Confirm delete
             </h3>
-            <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+            <p className="mt-1 text-sm text-muted">
               Delete cid <span className="font-mono">{cid}</span>? This action cannot be undone.
             </p>
           </div>
@@ -1096,7 +1096,7 @@ function ConfirmDeleteDialog({
 
         <div className="mt-5 flex justify-end gap-2">
           <button
-            className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-zinc-200 px-4 text-sm font-medium text-zinc-900 disabled:opacity-50 dark:border-zinc-800 dark:text-zinc-50"
+            className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-border px-4 text-sm font-medium text-foreground hover:bg-surface-highlight disabled:opacity-50 transition-colors"
             type="button"
             aria-label="Cancel delete"
             disabled={disabled}
