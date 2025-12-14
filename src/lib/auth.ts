@@ -125,16 +125,44 @@ export const auth = betterAuth({
               use: [sessionMiddleware],
             },
             async (ctx) => {
-              const cookieName = ctx.context.createAuthCookie("provider_profile").name;
-              const raw = await ctx.getSignedCookie(cookieName, ctx.context.secret);
-              if (!raw) {
+              const session = ctx.context.session;
+              if (!session) {
                 return ctx.json(null);
               }
-              try {
-                return ctx.json(JSON.parse(raw));
-              } catch {
-                return ctx.json({ raw });
+
+              const rows = await db
+                .select({
+                  providerProfileJson: schema.user.providerProfileJson,
+                  organizationJson: schema.user.organizationJson,
+                })
+                .from(schema.user)
+                .where(eq(schema.user.id, session.user.id))
+                .limit(1);
+
+              const providerProfileRaw = rows[0]?.providerProfileJson;
+              if (!providerProfileRaw) {
+                return ctx.json(null);
               }
+
+              const organizationRaw = rows[0]?.organizationJson;
+              let providerProfile: unknown = null;
+              let organization: unknown = null;
+
+              try {
+                providerProfile = JSON.parse(providerProfileRaw);
+              } catch {
+                providerProfile = { raw: providerProfileRaw };
+              }
+
+              if (organizationRaw) {
+                try {
+                  organization = JSON.parse(organizationRaw);
+                } catch {
+                  organization = { raw: organizationRaw };
+                }
+              }
+
+              return ctx.json({ providerProfile, organization });
             },
           ),
         },
