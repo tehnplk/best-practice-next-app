@@ -21,6 +21,27 @@ export default function Navbar() {
   const nextPath = pathname || "/";
   const signInHref = `/sign-in?next=${encodeURIComponent(nextPath)}`;
 
+  const startSignIn = async () => {
+    const errorUrl = new URL("/sign-in", window.location.origin);
+    errorUrl.searchParams.set("error", "oauth");
+    errorUrl.searchParams.set("next", nextPath);
+
+    const res = await authClient.signIn.oauth2({
+      providerId: "health-id",
+      callbackURL: nextPath,
+      errorCallbackURL: `${errorUrl.pathname}${errorUrl.search}`,
+      newUserCallbackURL: nextPath,
+    });
+
+    const url = (res as any)?.data?.url;
+    if (typeof url === "string" && url.length > 0) {
+      window.location.href = url;
+      return;
+    }
+
+    router.push(signInHref);
+  };
+
   return (
     <nav className="fixed top-0 z-50 w-full border-b border-border bg-surface/80 backdrop-blur-xl transition-all duration-300">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
@@ -59,12 +80,13 @@ export default function Navbar() {
               })}
               <div className="ml-4 flex items-center gap-2">
                 {!session ? (
-                  <Link
-                    href={signInHref}
+                  <button
+                    type="button"
+                    onClick={startSignIn}
                     className="rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
                   >
                     Sign in
-                  </Link>
+                  </button>
                 ) : (
                   <button
                     type="button"
@@ -122,13 +144,16 @@ export default function Navbar() {
             );
           })}
           {!session ? (
-            <Link
-              href={signInHref}
-              onClick={() => setIsOpen(false)}
+            <button
+              type="button"
+              onClick={async () => {
+                setIsOpen(false);
+                await startSignIn();
+              }}
               className="block rounded-md px-3 py-2 text-base font-medium bg-primary text-primary-foreground"
             >
               Sign in
-            </Link>
+            </button>
           ) : (
             <button
               type="button"
