@@ -19,9 +19,6 @@ export const auth = betterAuth({
       providerProfileJson: createFieldAttribute("string", {
         required: false,
       }),
-      organizationJson: createFieldAttribute("string", {
-        required: false,
-      }),
     },
   },
   plugins: [
@@ -91,11 +88,6 @@ export const auth = betterAuth({
               return null;
             }
 
-            const organization = providerProfileJson?.data?.organization;
-            const organizationJson = Array.isArray(organization)
-              ? JSON.stringify(organization)
-              : null;
-
             const email = `provider_${providerId.toLowerCase()}@provider.local`;
             const name =
               providerProfileJson?.data?.name_th ??
@@ -108,7 +100,6 @@ export const auth = betterAuth({
               name,
               emailVerified: true,
               providerProfileJson: JSON.stringify(providerProfileJson),
-              organizationJson,
             } as any;
           },
         },
@@ -133,7 +124,6 @@ export const auth = betterAuth({
               const rows = await db
                 .select({
                   providerProfileJson: schema.user.providerProfileJson,
-                  organizationJson: schema.user.organizationJson,
                 })
                 .from(schema.user)
                 .where(eq(schema.user.id, session.user.id))
@@ -144,25 +134,20 @@ export const auth = betterAuth({
                 return ctx.json(null);
               }
 
-              const organizationRaw = rows[0]?.organizationJson;
-              let providerProfile: unknown = null;
-              let organization: unknown = null;
+              let providerProfile: Record<string, any> | null = null;
 
               try {
-                providerProfile = JSON.parse(providerProfileRaw);
+                const parsed: unknown = JSON.parse(providerProfileRaw);
+                if (parsed && typeof parsed === "object") {
+                  providerProfile = parsed as Record<string, any>;
+                } else {
+                  providerProfile = { value: parsed };
+                }
               } catch {
                 providerProfile = { raw: providerProfileRaw };
               }
 
-              if (organizationRaw) {
-                try {
-                  organization = JSON.parse(organizationRaw);
-                } catch {
-                  organization = { raw: organizationRaw };
-                }
-              }
-
-              return ctx.json({ providerProfile, organization });
+              return ctx.json(providerProfile);
             },
           ),
         },

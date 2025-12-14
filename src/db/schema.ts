@@ -25,7 +25,6 @@ export const user = sqliteTable(
       .$defaultFn(() => new Date())
       .notNull(),
     providerProfileJson: text("provider_profile_json"),
-    organizationJson: text("organization_json"),
   },
   (t) => [uniqueIndex("user_email_unique").on(t.email)],
 );
