@@ -6,7 +6,7 @@ export default function TestProviderIdPage() {
       <div className="mx-auto flex min-h-[70vh] max-w-2xl flex-col items-center justify-center gap-4 text-center">
         <h1 className="text-2xl font-semibold tracking-tight">ทดสอบ Login (Health ID)</h1>
         <p className="text-sm text-muted-foreground">
-          ปุ่มนี้จะ redirect ไป Health ID แล้วกลับมาที่ <code>/test-provider-id/callback</code> เพื่อทำ Step 3-5 ตามเอกสาร
+          ปุ่มนี้จะ redirect ไป Health ID แล้วกลับมาที่ <code>/api/test-provider-id/callback</code> เพื่อทำ Step 3-5 ตามเอกสาร
         </p>
 
         <form action={providerIdProcess}>
