@@ -21,6 +21,7 @@
 - `HEALTH_REDIRECT_URI` (ต้อง whitelist กับ Health ID แบบ exact match)
 - `PROVIDER_CLIENT_ID`
 - `PROVIDER_CLIENT_SECRET`
+- `TEST_PROVIDER_ID_SESSION_SECRET` (ใช้เข้ารหัส cookie ชั่วคราว 1 hop ก่อนย้ายไป localStorage)
 
 > Note: ห้าม commit ค่า secret ลง git
 
@@ -43,7 +44,7 @@
 ### หมายเหตุสำคัญ
 - `redirect_uri` ต้องเป็น URL ฝั่งเรา
   - **DEV (Better Auth callback)**: `http://localhost:3000/api/auth/oauth2/callback/health-id`
-  - **DEV (debug page callback)**: `http://localhost:3000/test-provider-id/callback`
+  - **DEV (test flow callback API)**: `http://localhost:3000/api/test-provider-id/callback`
   - **PROD**: `https://your-domain.com/api/auth/oauth2/callback/health-id`
     - ต้องเป็น **HTTPS**
     - ต้อง whitelist ในระบบ Health ID แบบ **exact match** (รวม `https`/โดเมน/พาธ และระวัง `www` + trailing slash)
@@ -54,14 +55,17 @@
 ## 2) Step 2: รับ `code` ที่ callback (redirect_uri)
 
 ### ตัวอย่าง URL
-- `GET http://localhost:3000/test-provider-id/callback?code=...&state=...`
+- `GET http://localhost:3000/api/test-provider-id/callback?code=...&state=...`
 
 > หมายเหตุ: ถ้าใช้ Better Auth flow จะเป็น
 > - `GET http://localhost:3000/api/auth/oauth2/callback/health-id?code=...&state=...`
 
 ### หมายเหตุสำคัญ
 - `code` เป็น **one-time** ใช้ซ้ำ/refresh แล้วมักจะเจอ `422 Code is invalid`
-- Flow debug ปัจจุบันเป็น **stateless** (ไม่เก็บ cookie/session/localStorage)
+- Flow test ปัจจุบัน:
+  - API จะดึง Provider Profile แล้วเก็บไว้ใน **cookie แบบเข้ารหัส (httpOnly) ชั่วคราว**
+  - จากนั้น redirect ไป `/test-provider-id/profile`
+  - หน้า `/test-provider-id/profile` จะ fetch จาก `/api/test-provider-id/profile` แล้วเก็บผลลัพธ์ลง **localStorage**
 
 ---
 
@@ -167,7 +171,11 @@
 
 - Start page (button): `src/app/test-provider-id/page.tsx`
 - Redirect action: `src/app/test-provider-id/actions.ts`
-- Callback + exchanges + profile fetch: `src/app/test-provider-id/callback/page.tsx`
+- Callback API (exchange + fetch profile + set cookie + redirect): `src/app/api/test-provider-id/callback/route.ts`
+- Profile API (read cookie once + clear cookie): `src/app/api/test-provider-id/profile/route.ts`
+- Profile page (save to localStorage + render): `src/app/test-provider-id/profile/page.tsx`
+- (Optional fallback redirect page): `src/app/test-provider-id/callback/page.tsx`
+- Cookie seal/unseal helper: `src/lib/test-provider-id-session.ts`
 
 ---
 
@@ -178,4 +186,6 @@
 3. Backend exchanges `code` for **Health access token** via `POST /api/v1/token` (form-urlencoded).
 4. Backend exchanges **Health access token** for **Provider access token** via `POST /api/v1/services/token` (JSON).
 5. Backend fetches **Provider profile** via `GET /api/v1/services/profile?position_type=1` with required headers.
+6. Backend stores the profile in an **encrypted httpOnly cookie** temporarily and redirects to `/test-provider-id/profile`.
+7. The `/test-provider-id/profile` page fetches `/api/test-provider-id/profile`, then saves the profile into **localStorage**.
 
