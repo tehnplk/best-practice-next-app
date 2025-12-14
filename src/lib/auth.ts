@@ -3,7 +3,7 @@ import * as schema from "@/db/schema";
 import { eq } from "drizzle-orm";
 
 import { betterAuth } from "better-auth";
-import { createAuthEndpoint, createAuthMiddleware, sessionMiddleware } from "better-auth/api";
+import { createAuthEndpoint, sessionMiddleware } from "better-auth/api";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { createFieldAttribute } from "better-auth/db";
 import { genericOAuth } from "better-auth/plugins";
@@ -169,35 +169,4 @@ export const auth = betterAuth({
       };
     })(),
   ],
-  hooks: {
-    after: createAuthMiddleware(async (ctx) => {
-      // Next.js handler mounts Better Auth under `/api/auth/*`
-      if (!ctx.path.includes("/oauth2/callback/health-id")) {
-        return;
-      }
-
-      const newSession = ctx.context.newSession;
-      if (!newSession) {
-        return;
-      }
-
-      const rows = await db
-        .select({ providerProfileJson: schema.user.providerProfileJson })
-        .from(schema.user)
-        .where(eq(schema.user.id, newSession.user.id))
-        .limit(1);
-
-      const profileJson = rows[0]?.providerProfileJson;
-      if (!profileJson) {
-        return;
-      }
-
-      const cookie = ctx.context.createAuthCookie("provider_profile");
-      await ctx.setSignedCookie(cookie.name, profileJson, ctx.context.secret, {
-        ...cookie.attributes,
-        path: "/",
-        maxAge: ctx.context.sessionConfig.expiresIn,
-      });
-    }),
-  },
 });
