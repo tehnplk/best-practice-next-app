@@ -4,6 +4,15 @@ import Link from "next/link";
 
 export const dynamic = "force-dynamic";
 
+function getInitials(value: string): string {
+  const trimmed = value.trim();
+  if (!trimmed) return "?";
+  const parts = trimmed.split(/\s+/).filter(Boolean);
+  const first = parts[0]?.[0] ?? "?";
+  const last = parts.length > 1 ? parts[parts.length - 1]?.[0] : "";
+  return `${first}${last}`.toUpperCase();
+}
+
 function JsonCard({ title, data }: { title: string; data: unknown }) {
   return (
     <section className="overflow-hidden rounded-xl border border-border bg-surface shadow-sm">
@@ -41,48 +50,122 @@ export default async function UserProfilePage() {
     }
   }
 
+  const providerId = (providerProfile as any)?.data?.provider_id as
+    | string
+    | undefined;
+
   const userInfoWithoutProviderProfile =
     userInfo && typeof userInfo === "object"
       ? { ...(userInfo as Record<string, unknown>), providerProfileJson: undefined }
       : userInfo;
+
+  const displayName =
+    (userInfo as any)?.name ?? (userInfo as any)?.email ?? "Unknown";
+  const displayEmail = (userInfo as any)?.email as string | undefined;
+  const displayImage = (userInfo as any)?.image as string | null | undefined;
+  const initials = getInitials(String(displayName));
 
   return (
     <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
       <div className="flex items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight text-foreground">
-            User Profile
+            โปรไฟล์ผู้ใช้
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Session + user + provider profile snapshot for debugging.
+            ภาพรวมบัญชีและข้อมูล Provider (สำหรับตรวจสอบ)
           </p>
         </div>
       </div>
 
       {!session ? (
-        <div className="mt-6 overflow-hidden rounded-xl border border-border bg-surface shadow-sm">
-          <div className="border-b border-border bg-surface/80 px-4 py-3">
-            <p className="text-sm font-medium text-foreground">Not signed in</p>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Please sign in with Health ID to view your session and provider profile.
-            </p>
+        <div className="mt-6 mx-auto max-w-xl rounded-2xl border border-border bg-surface p-4 shadow-lg shadow-black/5">
+          <div className="flex items-center gap-4">
+            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-surface-highlight text-sm font-semibold text-foreground">
+              ?
+            </div>
+            <div className="min-w-0">
+              <div className="truncate text-base font-semibold text-foreground">
+                ยังไม่ได้เข้าสู่ระบบ
+              </div>
+              <div className="mt-1 text-sm text-muted-foreground">
+                กรุณา Sign in ด้วย Health ID ก่อน
+              </div>
+            </div>
           </div>
-          <div className="px-4 py-4">
-            <Link
-              className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow-sm shadow-primary/20 hover:bg-primary/90"
-              href="/sign-in?next=/user/profile"
-            >
-              Go to sign in
-            </Link>
-          </div>
+
+          <div className="my-4 h-px bg-border" />
+
+          <Link
+            className="flex w-full items-center justify-center gap-2 rounded-xl bg-surface-highlight px-4 py-3 text-sm font-semibold text-foreground hover:bg-surface-highlight/80"
+            href="/sign-in?next=/user/profile"
+          >
+            ดูโปรไฟล์ทั้งหมด
+          </Link>
         </div>
       ) : (
-        <div className="mt-6 space-y-6">
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-            <JsonCard title="Session" data={sessionInfo} />
-            <JsonCard title="User" data={userInfoWithoutProviderProfile} />
+        <div className="mt-6 space-y-8">
+          <div className="mx-auto max-w-xl rounded-2xl border border-border bg-surface p-4 shadow-lg shadow-black/5">
+            <div className="flex items-center gap-4">
+              <div className="relative h-12 w-12 overflow-hidden rounded-full border border-border bg-surface-highlight">
+                {displayImage ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={displayImage}
+                    alt="avatar"
+                    className="h-full w-full object-cover"
+                  />
+                ) : (
+                  <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-primary/20 to-secondary/20 text-sm font-semibold text-foreground">
+                    {initials}
+                  </div>
+                )}
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="truncate text-base font-semibold text-foreground">
+                  {String(displayName)}
+                </div>
+                {displayEmail ? (
+                  <div className="mt-1 truncate text-sm text-muted-foreground">
+                    {displayEmail}
+                  </div>
+                ) : null}
+              </div>
+            </div>
+
+            <div className="my-4 h-px bg-border" />
+
+            <div className="flex items-center justify-between gap-4">
+              <div className="text-sm font-medium text-foreground">Provider ID</div>
+              <div className="truncate text-sm text-muted-foreground">
+                {providerId ?? "-"}
+              </div>
+            </div>
+
+            <div className="my-4 h-px bg-border" />
+
+            <Link
+              className="flex w-full items-center justify-center gap-2 rounded-xl bg-surface-highlight px-4 py-3 text-sm font-semibold text-foreground hover:bg-surface-highlight/80"
+              href="#full-profile"
+            >
+              ดูโปรไฟล์ทั้งหมด
+            </Link>
           </div>
-          <JsonCard title="Provider Profile" data={providerProfile} />
+
+          <div id="full-profile" className="space-y-4">
+            <details className="rounded-xl border border-border bg-surface p-4">
+              <summary className="cursor-pointer select-none text-sm font-semibold text-foreground">
+                รายละเอียด (JSON)
+              </summary>
+              <div className="mt-4 space-y-6">
+                <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+                  <JsonCard title="Session" data={sessionInfo} />
+                  <JsonCard title="User" data={userInfoWithoutProviderProfile} />
+                </div>
+                <JsonCard title="Provider Profile" data={providerProfile} />
+              </div>
+            </details>
+          </div>
         </div>
       )}
     </main>
