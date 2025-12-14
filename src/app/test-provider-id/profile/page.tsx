@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 
 function renderJson(data: unknown) {
   return (
@@ -11,12 +12,10 @@ function renderJson(data: unknown) {
 }
 
 export default function TestProviderIdProfilePage({
-  searchParams,
-}: {
-  searchParams: Record<string, string | string[] | undefined>;
-}) {
-  const error = searchParams.error;
-  const state = searchParams.state;
+}: {}) {
+  const sp = useSearchParams();
+  const error = sp.get("error");
+  const state = sp.get("state");
 
   const initialError = useMemo(() => {
     return typeof error === "string" && error.length > 0 ? error : null;
