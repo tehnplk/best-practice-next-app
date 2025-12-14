@@ -42,8 +42,9 @@
 
 ### หมายเหตุสำคัญ
 - `redirect_uri` ต้องเป็น URL ฝั่งเรา
-  - **DEV (local)**: `http://localhost:3000/test-provider-id/callback`
-  - **PROD**: `https://your-domain.com/test-provider-id/callback`
+  - **DEV (Better Auth callback)**: `http://localhost:3000/api/auth/oauth2/callback/health-id`
+  - **DEV (debug page callback)**: `http://localhost:3000/test-provider-id/callback`
+  - **PROD**: `https://your-domain.com/api/auth/oauth2/callback/health-id`
     - ต้องเป็น **HTTPS**
     - ต้อง whitelist ในระบบ Health ID แบบ **exact match** (รวม `https`/โดเมน/พาธ และระวัง `www` + trailing slash)
 - ต้อง whitelist ในระบบ Health ID ไม่งั้นจะเจอ `Redirect uri is invalid`
@@ -54,6 +55,9 @@
 
 ### ตัวอย่าง URL
 - `GET http://localhost:3000/test-provider-id/callback?code=...&state=...`
+
+> หมายเหตุ: ถ้าใช้ Better Auth flow จะเป็น
+> - `GET http://localhost:3000/api/auth/oauth2/callback/health-id?code=...&state=...`
 
 ### หมายเหตุสำคัญ
 - `code` เป็น **one-time** ใช้ซ้ำ/refresh แล้วมักจะเจอ `422 Code is invalid`

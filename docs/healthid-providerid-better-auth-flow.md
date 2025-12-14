@@ -43,8 +43,9 @@
   - เช่น `http://localhost:3000`
 - `BETTER_AUTH_SECRET`
 - `DATABASE_URL`
-  - แนะนำให้ใช้ **absolute path** บน Windows เพื่อให้ทุก Next dev worker ใช้ DB เดียวกัน เช่น
-    - `E:/NextJS/best-practice-next-app/data/app_new.db`
+  - แนะนำให้ใช้ **relative path** จาก project root เพื่อให้ portable เช่น
+    - `./data/app.db`
+  - หมายเหตุ: โปรเจกต์นี้ resolve relative path แบบ deterministic จาก project root (ดู `src/db/index.ts`)
 
 ---
 
@@ -69,7 +70,7 @@
 ### App (Debug endpoint)
 - `GET /api/auth/me/provider-profile`
   - ต้อง auth ก่อน (ใช้ `sessionMiddleware`)
-  - อ่าน `providerProfileJson` + `organizationJson` จาก DB (table `user`) แล้ว return JSON
+  - อ่าน `providerProfileJson` จาก DB (table `user`) แล้ว return JSON (provider profile ตรง ๆ)
 
 ---
 
@@ -110,7 +111,6 @@ Better Auth เรียก token endpoint (เรา proxy ไว้):
 - `name`
 - `email` (สร้างเป็น provider-local หากไม่มี email ที่ใช้เป็น unique จริง)
 - `providerProfileJson` (stringified JSON)
-- `organizationJson` (stringified JSON ของ `organization[]`)
 
 ### Step G — Create/Update user and create session
 Better Auth + drizzleAdapter จะเขียนข้อมูลลง DB:
@@ -147,7 +147,6 @@ Session check ใช้:
 ตารางที่เกี่ยวข้อง:
 - `user`
   - `providerProfileJson` (text)
-  - `organizationJson` (text)
 - `session`
 - `account`
 - `verification` (Better Auth ใช้เก็บ OAuth state/PKCE)
@@ -164,8 +163,8 @@ Session check ใช้:
 แนวทางแก้:
 - ทำ OTP/consent ให้เสร็จใน ~10 นาที
 - ห้าม restart dev server ระหว่าง flow
-- สำคัญมาก: ใช้ `DATABASE_URL` แบบ **absolute path** เพื่อให้ทุก process/worker ใช้ DB ไฟล์เดียวกัน
-  - ถ้าใช้ relative path บางทีแต่ละ worker resolve คนละที่ -> state ถูกเขียน/อ่านคนละ DB
+- สำคัญมาก: ให้ `DATABASE_URL` ชี้ไป DB ไฟล์เดียวกันเสมอ
+  - ในโปรเจกต์นี้สามารถใช้ relative path ได้ เพราะมีการ resolve จาก project root แบบ deterministic (ลดปัญหาแต่ละ worker resolve คนละที่)
 
 ### B) `GET /api/auth/me/provider-profile` ได้ `null`
 ถ้า endpoint ไปพึ่ง cookie จะเสี่ยงเพราะ:
@@ -210,4 +209,4 @@ Session check ใช้:
 - `GET /user/profile` (unauthenticated) -> redirect ไป `/sign-in?next=/user/profile`
 - กด sign-in -> ไป Health ID
 - ทำ OTP/consent -> กลับ `/user/profile` ได้
-- `GET /api/auth/me/provider-profile` คืน JSON (ไม่ใช่ `null`)
+- `GET /api/auth/me/provider-profile` คืน provider profile JSON (ไม่ใช่ `null`)
