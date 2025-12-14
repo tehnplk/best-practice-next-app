@@ -27,9 +27,7 @@ export const user = sqliteTable(
     providerProfileJson: text("provider_profile_json"),
     organizationJson: text("organization_json"),
   },
-  (t) => ({
-    emailUnique: uniqueIndex("user_email_unique").on(t.email),
-  }),
+  (t) => [uniqueIndex("user_email_unique").on(t.email)],
 );
 
 export const session = sqliteTable(
@@ -50,9 +48,7 @@ export const session = sqliteTable(
       .notNull()
       .references(() => user.id, { onDelete: "cascade" }),
   },
-  (t) => ({
-    tokenUnique: uniqueIndex("session_token_unique").on(t.token),
-  }),
+  (t) => [uniqueIndex("session_token_unique").on(t.token)],
 );
 
 export const account = sqliteTable(
@@ -82,12 +78,9 @@ export const account = sqliteTable(
       .$defaultFn(() => new Date())
       .notNull(),
   },
-  (t) => ({
-    providerAccountUnique: uniqueIndex("account_provider_account_unique").on(
-      t.providerId,
-      t.accountId,
-    ),
-  }),
+  (t) => [
+    uniqueIndex("account_provider_account_unique").on(t.providerId, t.accountId),
+  ],
 );
 
 export const verification = sqliteTable("verification", {
