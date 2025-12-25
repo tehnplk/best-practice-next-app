@@ -19,7 +19,7 @@
    - `BETTER_AUTH_URL=http://localhost:3000`
    - `PROVIDER_CLIENT_ID=...`
    - `PROVIDER_CLIENT_SECRET=...`
-   - `TEST_PROVIDER_ID_SESSION_SECRET=...` (ใช้เข้ารหัสคุกกี้ชั่วคราวใน `/test-provider-id`)
+   - `TEST_PROVIDER_ID_SESSION_SECRET=...` (ใช้เข้ารหัสคุกกี้ของเบราว์เซอร์แบบชั่วคราวใน `/test-provider-id`)
 3. ซิงก์สคีมาด้วย Drizzle (มีไฟล์ DB เริ่มต้นที่ `./data/app.db` แล้ว)
    ```bash
    npm run db:push
@@ -28,7 +28,8 @@
    ```bash
    npm run dev
    ```
-5. เปิด http://localhost:3000 (แดชบอร์ด) แล้วกด **Sign in** เพื่อเริ่ม Health ID OAuth จากนั้นดู session/โปรไฟล์ผู้ให้บริการที่ `/user/profile`
+5. เปิด http://localhost:3000 (แดชบอร์ด) แล้วกด **Sign in** เพื่อเริ่ม Health ID OAuth  
+   จากนั้นดู session/โปรไฟล์ผู้ให้บริการที่ `/user/profile`
 
 ## สคริปต์ที่ใช้ได้
 - `npm run dev` – รัน Next.js โหมดพัฒนา
