@@ -1,55 +1,55 @@
 # Best Practice Next App
 
-Next.js (App Router) reference app that demonstrates:
-- Health ID → Provider ID OAuth flow using [`better-auth`](https://github.com/gndelia/better-auth) with SQLite/Drizzle.
-- Protected user profile routes with session cookies.
-- Population and hospital management UIs with inline editing plus a dashboard summary.
-- A `/test-provider-id` playground to debug the raw provider profile flow.
+แอปอ้างอิง Next.js (App Router) ที่สาธิต:
+- Health ID → Provider ID OAuth ผ่าน [`better-auth`](https://github.com/gndelia/better-auth) บน SQLite/Drizzle
+- การปกป้องเส้นทางโปรไฟล์ผู้ใช้ด้วย session cookie
+- หน้าจอ Population และ Hospital พร้อม inline edit และสรุปบนแดชบอร์ด
+- หน้าทดลอง `/test-provider-id` สำหรับดีบักการดึง Provider Profile ตรง ๆ
 
-## Quick start
-1. Install dependencies
+## วิธีเริ่มต้นอย่างรวดเร็ว
+1. ติดตั้ง dependency
    ```bash
    npm install
    ```
-2. Create `.env.local` with required values:
-   - `DATABASE_URL=./data/app.db` (default SQLite path; relative paths resolve from project root)
+2. สร้างไฟล์ `.env.local` และตั้งค่า:
+   - `DATABASE_URL=./data/app.db` (ค่าเริ่มต้น SQLite; relative path จะถูก resolve จาก project root)
    - `HEALTH_CLIENT_ID=...`
    - `HEALTH_CLIENT_SECRET=...`
    - `HEALTH_REDIRECT_URI=http://localhost:3000/api/auth/oauth2/callback/health-id`
    - `BETTER_AUTH_URL=http://localhost:3000`
    - `PROVIDER_CLIENT_ID=...`
    - `PROVIDER_CLIENT_SECRET=...`
-   - `TEST_PROVIDER_ID_SESSION_SECRET=...` (encrypts the temporary cookie in `/test-provider-id`)
-3. Apply the schema (SQLite via Drizzle). A starter DB already exists at `./data/app.db`.
+   - `TEST_PROVIDER_ID_SESSION_SECRET=...` (ใช้เข้ารหัสคุกกี้ชั่วคราวใน `/test-provider-id`)
+3. ซิงก์สคีมาด้วย Drizzle (มีไฟล์ DB เริ่มต้นที่ `./data/app.db` แล้ว)
    ```bash
    npm run db:push
    ```
-4. Run the dev server
+4. รัน dev server
    ```bash
    npm run dev
    ```
-5. Open http://localhost:3000 (dashboard). Use **Sign in** to start the Health ID OAuth flow and view the session/provider profile at `/user/profile`.
+5. เปิด http://localhost:3000 (แดชบอร์ด) แล้วกด **Sign in** เพื่อเริ่ม Health ID OAuth จากนั้นดู session/โปรไฟล์ผู้ให้บริการที่ `/user/profile`
 
-## Available scripts
-- `npm run dev` – start Next.js in development mode
-- `npm run build` / `npm run start` – production build & start
-- `npm run lint` – run ESLint
-- `npm run db:push` – sync schema to the SQLite database
-- `npm run db:studio` – open Drizzle Studio
+## สคริปต์ที่ใช้ได้
+- `npm run dev` – รัน Next.js โหมดพัฒนา
+- `npm run build` / `npm run start` – บิลด์และรันโหมดโปรดักชัน
+- `npm run lint` – รัน ESLint
+- `npm run db:push` – ซิงก์สคีมากับฐานข้อมูล SQLite
+- `npm run db:studio` – เปิด Drizzle Studio
 
-## Key routes & features
-- `/dashboard` – overview cards for population and admissions
-- `/population` – searchable, filterable registry with inline edits
-- `/hospital` – manage hospital records
-- `/sign-in` → `/user/profile` – Health ID → Provider ID sign-in, session, and provider profile viewer
-- `/api/auth/*` – Better Auth handlers; `/api/auth/me/provider-profile` returns stored provider profile JSON
-- `/test-provider-id/*` – manual Provider ID profile flow (debug playground)
+## เส้นทางและฟีเจอร์สำคัญ
+- `/dashboard` – การ์ดสรุปประชากรและการรับเข้ารพ.
+- `/population` – ค้นหา/กรองทะเบียนประชากร พร้อม inline edit
+- `/hospital` – จัดการข้อมูลโรงพยาบาล
+- `/sign-in` → `/user/profile` – Flow Health ID → Provider ID, session และตัวดูโปรไฟล์ผู้ให้บริการ
+- `/api/auth/*` – Better Auth handlers; `/api/auth/me/provider-profile` คืน JSON โปรไฟล์ผู้ให้บริการที่บันทึกไว้
+- `/test-provider-id/*` – playground ทดสอบการดึง Provider Profile แบบแมนนวล
 
-## Authentication flow docs
-Detailed sequence diagrams and troubleshooting live in:
-- `docs/healthid-providerid-better-auth-flow.md` – Better Auth + Health ID + Provider ID end-to-end flow
-- `docs/PROVIDER_ID_PROFILE_FLOW.md` – focused walkthrough for the `/test-provider-id` playground
+## เอกสาร flow การยืนยันตัวตน
+ไดอะแกรมและทิปการดีบักอยู่ที่:
+- `docs/healthid-providerid-better-auth-flow.md` – flow ครบ Health ID + Provider ID + Better Auth
+- `docs/PROVIDER_ID_PROFILE_FLOW.md` – walkthrough สำหรับ playground `/test-provider-id`
 
-## Notes
-- The database path falls back to `./data/app.db` (see `src/db/index.ts`); keep the same path across runs to avoid losing OAuth state during development.
-- Tailwind CSS v4 is used for styling; check `src/app/globals.css` for design tokens.
+## หมายเหตุ
+- เส้นทางฐานข้อมูล fallback เป็น `./data/app.db` (ดู `src/db/index.ts`) ควรใช้ path เดียวกันทุกครั้งเพื่อลดปัญหา state OAuth หายระหว่างพัฒนา
+- ใช้ Tailwind CSS v4 สำหรับสไตล์ ดู tokens ใน `src/app/globals.css`
