@@ -38,7 +38,7 @@
 - `npm run db:studio` – เปิด Drizzle Studio
 
 ## เส้นทางและฟีเจอร์สำคัญ
-- `/dashboard` – การ์ดสรุปประชากรและการรับเข้ารพ.
+- `/dashboard` – การ์ดสรุปประชากรและการรับเข้ารพ
 - `/population` – ค้นหา/กรองทะเบียนประชากร พร้อม inline edit
 - `/hospital` – จัดการข้อมูลโรงพยาบาล
 - `/sign-in` → `/user/profile` – Flow Health ID → Provider ID, session และตัวดูโปรไฟล์ผู้ให้บริการ
