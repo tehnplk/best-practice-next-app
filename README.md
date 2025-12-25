@@ -38,12 +38,12 @@
 - `npm run db:studio` – เปิด Drizzle Studio
 
 ## เส้นทางและฟีเจอร์สำคัญ
-- `/dashboard` – การ์ดสรุปประชากรและการรับเข้ารพ
+- `/dashboard` – การ์ดสรุปประชากรและการรับเข้าโรงพยาบาล
 - `/population` – ค้นหา/กรองทะเบียนประชากร พร้อม inline edit
 - `/hospital` – จัดการข้อมูลโรงพยาบาล
 - `/sign-in` → `/user/profile` – Flow Health ID → Provider ID, session และตัวดูโปรไฟล์ผู้ให้บริการ
 - `/api/auth/*` – Better Auth handlers; `/api/auth/me/provider-profile` คืน JSON โปรไฟล์ผู้ให้บริการที่บันทึกไว้
-- `/test-provider-id/*` – playground ทดสอบการดึง Provider Profile แบบแมนนวล
+- `/test-provider-id/*` – playground ทดสอบการดึง Provider Profile แบบด้วยตนเอง
 
 ## เอกสาร flow การยืนยันตัวตน
 ไดอะแกรมและทิปการดีบักอยู่ที่:
